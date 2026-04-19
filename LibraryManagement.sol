@@ -1,18 +1,5 @@
-﻿// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
-
-/**
- * @title LibraryManagement
- * @author - Big Ben
- * @notice A full-featured on-chain library management contract.
- *
- * @dev Core features:
- * - Owner-controlled book inventory (add/update copies).
- * - Customer profiles (name + metadata).
- * - Borrow and return lifecycle with due dates.
- * - Reward points for borrow/return and penalty for late returns.
- * - Rich read APIs for books, customers, and loan history.
- */
 
 contract LibraryManagement {
     // Errors
