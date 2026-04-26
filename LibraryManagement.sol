@@ -109,8 +109,8 @@ contract LibraryManagement {
     }
 
     // Storage
-    uint8 public nextBookId = 1;
-    uint8 public nextLoanId = 1;
+    uint256 public nextBookId = 1;
+    uint256 public nextLoanId = 1;
 
     mapping(uint256 => Book) private books;
     mapping(address => CustomerProfile) private customers;
@@ -332,7 +332,7 @@ contract LibraryManagement {
      * @notice Return a borrowed book.
      * @param loanId Active loan ID.
      */
-     
+
     function returnBook(uint256 loanId) external {
         Loan storage loan = loans[loanId];
         if (loan.id == 0) revert LoanNotFound();
