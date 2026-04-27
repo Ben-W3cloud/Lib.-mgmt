@@ -5,6 +5,7 @@
  */
 
 import { BookOpen } from "lucide-react";
+import Link from "next/link";
 
 export function Footer() {
   return (
@@ -24,13 +25,22 @@ export function Footer() {
             A decentralized library management system — powered by blockchain.
           </p>
 
-          {/* Tech stack */}
+          {/* Tech stack/Socials - haven't decided yet*/}
           <div className="flex items-center gap-3 text-xs text-parchment/40">
-            <span>Solidity</span>
-            <span className="text-leather-brown/40">•</span>
-            <span>Next.js</span>
-            <span className="text-leather-brown/40">•</span>
-            <span>wagmi</span>
+            <Link href="https://github.com/0xAbhi007/bibliotheca">
+              <span>Solidity</span>
+            </Link>
+
+            <Link href="https://github.com/0xAbhi007/bibliotheca">
+              <span className="text-leather-brown/40">•</span>
+              <span>Next.js</span>
+            </Link>
+
+            <Link href="https://github.com/0xAbhi007/bibliotheca">
+              <span className="text-leather-brown/40">•</span>
+              <span>wagmi</span>
+            </Link>
+
           </div>
         </div>
       </div>
