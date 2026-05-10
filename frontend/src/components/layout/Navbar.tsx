@@ -1,13 +1,7 @@
 /**
  * =============================================================================
- * Navbar — Main navigation bar with wallet connect and role-based links
+ * Navbar â€” Section-aware navigation and wallet entry point
  * =============================================================================
- *
- * Features:
- * - Library branding (Bibliotheca)
- * - Navigation links (role-dependent: shows admin links only for owner)
- * - RainbowKit ConnectButton for wallet connection
- * - Mobile responsive hamburger menu
  */
 
 "use client";
@@ -17,11 +11,17 @@ import { usePathname } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { useIsOwner, useMyProfile } from "@/hooks/useUser";
-import { BookOpen, Menu, X, Shield, User } from "lucide-react";
+import { BookOpen, Menu, Shield, User, X } from "lucide-react";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, truncateAddress } from "@/lib/utils";
 
-// Navigation items — shown based on connection and role state
+const homeLinks = [
+  { href: "#codex", label: "The Codex" },
+  { href: "#architecture", label: "Architecture" },
+  { href: "#protocol", label: "Protocol" },
+  { href: "#governance", label: "Governance" },
+];
+
 const userLinks = [
   { href: "/books", label: "Browse Books", icon: BookOpen },
   { href: "/loans", label: "My Loans" },
@@ -35,6 +35,69 @@ const adminLinks = [
   { href: "/admin/rules", label: "Rules" },
 ];
 
+function WalletButton() {
+  return (
+    <ConnectButton.Custom>
+      {({
+        account,
+        chain,
+        mounted,
+        openAccountModal,
+        openChainModal,
+        openConnectModal,
+      }) => {
+        const ready = mounted;
+        const connected = ready && account && chain;
+
+        if (!ready) {
+          return (
+            <button
+              className="inline-flex items-center justify-center border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-[#edf0ff]"
+              type="button"
+            >
+              Connect Wallet
+            </button>
+          );
+        }
+
+        if (!connected) {
+          return (
+            <button
+              onClick={openConnectModal}
+              className="inline-flex items-center justify-center border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-[#edf0ff] transition-colors hover:bg-white/10"
+              type="button"
+            >
+              Connect Wallet
+            </button>
+          );
+        }
+
+        if (chain.unsupported) {
+          return (
+            <button
+              onClick={openChainModal}
+              className="inline-flex items-center justify-center border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm font-medium text-amber-100 transition-colors hover:bg-amber-300/15"
+              type="button"
+            >
+              Wrong Network
+            </button>
+          );
+        }
+
+        return (
+          <button
+            onClick={openAccountModal}
+            className="inline-flex items-center justify-center border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium text-[#edf0ff] transition-colors hover:bg-white/10"
+            type="button"
+          >
+            {truncateAddress(account.address)}
+          </button>
+        );
+      }}
+    </ConnectButton.Custom>
+  );
+}
+
 export function Navbar() {
   const pathname = usePathname();
   const { isConnected } = useAccount();
@@ -42,118 +105,110 @@ export function Navbar() {
   const { isRegistered } = useMyProfile();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Determine which links to show based on the current page context
+  const isHome = pathname === "/";
   const isAdminSection = pathname.startsWith("/admin");
-  const links = isAdminSection && isOwner ? adminLinks : userLinks;
+  const links = isHome ? homeLinks : isAdminSection && isOwner ? adminLinks : userLinks;
+  const linkHref = (href: string) =>
+    isHome ? href : href.startsWith("#") ? `/${href}` : href;
 
   return (
-    <nav className="sticky top-0 z-40 bg-dark-walnut/95 backdrop-blur-md border-b border-leather-brown/20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo / Brand */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="p-1.5 rounded-lg bg-leather-brown/20 group-hover:bg-leather-brown/30 transition-colors">
-              <BookOpen className="w-5 h-5 text-gold-accent" />
+    <nav className="sticky top-0 z-40 border-b border-white/10 bg-[#0b1020]/95 backdrop-blur-xl">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center border border-white/10 bg-white/5">
+              <BookOpen className="h-5 w-5 text-cyan-200" />
             </div>
-            <span className="font-serif text-xl font-bold text-parchment tracking-wide">
-              Bibliotheca
+            <span className="font-serif text-xl font-bold tracking-wide text-[#edf0ff]">
+              The Permanent Library
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
-            {isConnected &&
-              links.map((link) => (
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={linkHref(link.href)}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium transition-colors",
+                  isHome
+                    ? "text-[#b4bdd8] hover:bg-white/5 hover:text-[#edf0ff]"
+                    : pathname === link.href
+                      ? "bg-white/5 text-[#edf0ff]"
+                      : "text-[#b4bdd8] hover:bg-white/5 hover:text-[#edf0ff]"
+                )}
+                onClick={() => setMobileOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+
+            {!isHome && isConnected && isOwner && !isAdminSection && (
+              <Link
+                href="/admin/dashboard"
+                className="px-4 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-white/5 hover:text-[#edf0ff]"
+              >
+                Admin
+              </Link>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {isConnected && isRegistered && !isHome && (
+              <span className="hidden items-center gap-1.5 border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-xs font-medium text-emerald-300 sm:inline-flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+                Registered
+              </span>
+            )}
+
+            <div className="hidden sm:block">
+              <WalletButton />
+            </div>
+
+            <button
+              onClick={() => setMobileOpen((open) => !open)}
+              className="border border-white/10 bg-white/5 p-2 text-[#edf0ff] transition-colors hover:bg-white/10 md:hidden"
+              type="button"
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
+        </div>
+
+        {mobileOpen && (
+          <div className="border-t border-white/10 pb-4 pt-3 md:hidden">
+            <div className="flex flex-col gap-1">
+              {links.map((link) => (
                 <Link
                   key={link.href}
-                  href={link.href}
+                  href={linkHref(link.href)}
+                  onClick={() => setMobileOpen(false)}
                   className={cn(
-                    "px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                    pathname === link.href
-                      ? "bg-leather-brown/25 text-gold-accent"
-                      : "text-parchment/70 hover:text-parchment hover:bg-leather-brown/10"
+                    "px-3 py-2 text-sm font-medium transition-colors",
+                    isHome
+                      ? "text-[#b4bdd8] hover:bg-white/5 hover:text-[#edf0ff]"
+                      : pathname === link.href
+                        ? "bg-white/5 text-[#edf0ff]"
+                        : "text-[#b4bdd8] hover:bg-white/5 hover:text-[#edf0ff]"
                   )}
                 >
                   {link.label}
                 </Link>
               ))}
 
-            {/* Show admin toggle if user is owner and NOT in admin section */}
-            {isConnected && isOwner && !isAdminSection && (
-              <Link
-                href="/admin/dashboard"
-                className="px-3 py-2 rounded-lg text-sm font-medium text-gold-accent/80 hover:text-gold-accent hover:bg-leather-brown/10 transition-all flex items-center gap-1.5"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                Admin
-              </Link>
-            )}
-            {isConnected && isAdminSection && (
-              <Link
-                href="/books"
-                className="px-3 py-2 rounded-lg text-sm font-medium text-parchment/70 hover:text-parchment hover:bg-leather-brown/10 transition-all"
-              >
-                ← Library
-              </Link>
-            )}
-          </div>
-
-          {/* Right section: wallet + mobile menu */}
-          <div className="flex items-center gap-3">
-            {/* Registration badge */}
-            {isConnected && isRegistered && (
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full bg-forest-green/15 text-forest-green text-xs font-medium border border-forest-green/25">
-                <span className="w-1.5 h-1.5 rounded-full bg-forest-green animate-pulse" />
-                Registered
-              </span>
-            )}
-
-            <ConnectButton
-              chainStatus="icon"
-              accountStatus="avatar"
-              showBalance={false}
-            />
-
-            {/* Mobile menu toggle */}
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden p-2 rounded-lg text-parchment/70 hover:bg-leather-brown/10"
-            >
-              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation Dropdown */}
-        {mobileOpen && (
-          <div className="md:hidden pb-4 animate-slideDown">
-            <div className="flex flex-col gap-1 pt-2 border-t border-leather-brown/20">
-              {isConnected &&
-                links.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      "px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                      pathname === link.href
-                        ? "bg-leather-brown/25 text-gold-accent"
-                        : "text-parchment/70 hover:text-parchment hover:bg-leather-brown/10"
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              {isConnected && isOwner && !isAdminSection && (
+              {!isHome && isConnected && isOwner && !isAdminSection && (
                 <Link
                   href="/admin/dashboard"
                   onClick={() => setMobileOpen(false)}
-                  className="px-3 py-2.5 rounded-lg text-sm font-medium text-gold-accent/80 hover:text-gold-accent hover:bg-leather-brown/10 flex items-center gap-1.5"
+                  className="px-3 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-white/5 hover:text-[#edf0ff]"
                 >
-                  <Shield className="w-3.5 h-3.5" />
                   Admin Panel
                 </Link>
               )}
+
+              <div className="mt-2 px-1">
+                <WalletButton />
+              </div>
             </div>
           </div>
         )}

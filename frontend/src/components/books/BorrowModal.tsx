@@ -18,13 +18,13 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Book } from "@/types";
 import { useBorrowBook } from "@/hooks/useBorrow";
 import { useContractConfig } from "@/hooks/useAdmin";
-import { secondsToDays, daysToSeconds, formatDuration } from "@/lib/utils";
+import { secondsToDays, daysToSeconds } from "@/lib/utils";
 import { Calendar, Clock, Award, AlertTriangle } from "lucide-react";
 
 interface BorrowModalProps {
@@ -59,25 +59,26 @@ export function BorrowModal({ book, isOpen, onClose }: BorrowModalProps) {
     borrow(book.id, durationSeconds);
   };
 
-  // Close modal on success
-  if (isSuccess) {
-    setTimeout(() => onClose(), 1500);
-  }
+  useEffect(() => {
+    if (!isSuccess) return;
+    const timer = setTimeout(() => onClose(), 1500);
+    return () => clearTimeout(timer);
+  }, [isSuccess, onClose]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Borrow Book">
-      <div className="space-y-6">
+      <div className="space-y-6 text-[#edf0ff]">
         {/* Book info summary */}
-        <div className="bg-leather-brown/5 rounded-xl p-4 border border-leather-brown/10">
-          <h3 className="font-serif text-lg font-semibold text-dark-walnut">
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <h3 className="font-serif text-lg font-semibold text-[#edf0ff]">
             {book.title}
           </h3>
-          <p className="text-sm text-slate">by {book.author}</p>
+          <p className="text-sm text-[#8e9ab8]">by {book.author}</p>
         </div>
 
         {/* Duration slider */}
         <div className="space-y-3">
-          <label className="flex items-center gap-2 text-sm font-medium text-dark-walnut">
+          <label className="flex items-center gap-2 text-sm font-medium text-[#edf0ff]">
             <Clock className="w-4 h-4" />
             Borrow Duration
           </label>
@@ -89,15 +90,15 @@ export function BorrowModal({ book, isOpen, onClose }: BorrowModalProps) {
               max={maxDays}
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
-              className="w-full h-2 bg-leather-brown/10 rounded-full appearance-none cursor-pointer
+              className="w-full h-2 rounded-full appearance-none cursor-pointer bg-white/10
                          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5
                          [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full
-                         [&::-webkit-slider-thumb]:bg-leather-brown [&::-webkit-slider-thumb]:shadow-md
+                         [&::-webkit-slider-thumb]:bg-cyan-300 [&::-webkit-slider-thumb]:shadow-md
                          [&::-webkit-slider-thumb]:cursor-pointer"
             />
-            <div className="flex justify-between text-xs text-slate">
+            <div className="flex justify-between text-xs text-[#8e9ab8]">
               <span>1 day</span>
-              <span className="font-semibold text-leather-brown text-sm">
+              <span className="text-sm font-semibold text-cyan-200">
                 {days} day{days !== 1 ? "s" : ""}
               </span>
               <span>{maxDays} days</span>
@@ -107,34 +108,34 @@ export function BorrowModal({ book, isOpen, onClose }: BorrowModalProps) {
 
         {/* Details grid */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-parchment rounded-lg p-3 border border-leather-brown/10">
-            <div className="flex items-center gap-1.5 text-xs text-slate mb-1">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="mb-1 flex items-center gap-1.5 text-xs text-[#8e9ab8]">
               <Calendar className="w-3.5 h-3.5" />
               Return by
             </div>
-            <p className="text-sm font-medium text-dark-walnut">{returnDate}</p>
+            <p className="text-sm font-medium text-[#edf0ff]">{returnDate}</p>
           </div>
-          <div className="bg-parchment rounded-lg p-3 border border-leather-brown/10">
-            <div className="flex items-center gap-1.5 text-xs text-slate mb-1">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+            <div className="mb-1 flex items-center gap-1.5 text-xs text-[#8e9ab8]">
               <Award className="w-3.5 h-3.5" />
               Reward
             </div>
-            <p className="text-sm font-medium text-forest-green">
+            <p className="text-sm font-medium text-emerald-300">
               +{config?.borrowRewardPoints ?? 10} points
             </p>
           </div>
         </div>
 
         {/* Late return warning */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-gold-accent/5 border border-gold-accent/15">
-          <AlertTriangle className="w-4 h-4 text-gold-accent mt-0.5 shrink-0" />
-          <p className="text-xs text-slate">
+        <div className="flex items-start gap-2 rounded-xl border border-cyan-300/15 bg-cyan-300/5 p-3">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200" />
+          <p className="text-xs text-[#8e9ab8]">
             Late returns incur a penalty of{" "}
-            <span className="font-semibold text-dusty-rose">
+            <span className="font-semibold text-rose-200">
               {config?.latePenaltyPerDay ?? 2} points per day
             </span>
             . On-time returns earn{" "}
-            <span className="font-semibold text-forest-green">
+            <span className="font-semibold text-emerald-300">
               +{config?.onTimeReturnRewardPoints ?? 15} bonus points
             </span>
             .

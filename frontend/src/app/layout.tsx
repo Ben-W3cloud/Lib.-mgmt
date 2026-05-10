@@ -1,6 +1,6 @@
 /**
  * =============================================================================
- * Root Layout — App shell with providers, fonts, and global structure
+ * Root Layout â€” App shell with providers, fonts, and global structure
  * =============================================================================
  */
 
@@ -12,16 +12,12 @@ import { Footer } from "@/components/layout/Footer";
 import { Toaster } from "react-hot-toast";
 
 // ---------------------------------------------------------------------------
-// Fonts — Google Fonts are loaded via CDN in the <head> tags
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
 // SEO Metadata
 // ---------------------------------------------------------------------------
 export const metadata: Metadata = {
-  title: "Bibliotheca — Decentralized Library Management",
+  title: "The Permanent Library",
   description:
-    "A premium decentralized library management system powered by blockchain. Browse books, borrow with smart contracts, and earn reward points.",
+    "A decentralized library protocol for preserving books, tracking loans, and governing access through smart contracts.",
   keywords: ["library", "blockchain", "dApp", "books", "Web3", "decentralized"],
 };
 
@@ -36,7 +32,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Load Google Fonts via CDN */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -44,9 +39,8 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans bg-parchment text-ink-black antialiased min-h-screen flex flex-col">
+      <body className="font-sans bg-parchment text-ink-black antialiased flex min-h-screen flex-col">
         <Web3Provider>
-          {/* Toast notifications — styled to match our theme */}
           <Toaster
             position="top-right"
             toastOptions={{
@@ -73,15 +67,8 @@ export default function RootLayout({
             }}
           />
 
-          {/* Navigation */}
           <Navbar />
-
-          {/* Main content area */}
-          <main className="flex-1">
-            {children}
-          </main>
-
-          {/* Footer */}
+          <main className="flex-1">{children}</main>
           <Footer />
         </Web3Provider>
       </body>

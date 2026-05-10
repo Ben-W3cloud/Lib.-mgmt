@@ -15,13 +15,16 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, action, className }: PageHeaderProps) {
   return (
-    <div className={cn("flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8", className)}>
+    <div className={cn("mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div>
-        <h1 className="text-3xl md:text-4xl font-serif font-bold text-dark-walnut">
+        <p className="mb-2 text-[11px] uppercase tracking-[0.35em] text-cyan-200/70">
+          Permanent Library
+        </p>
+        <h1 className="font-serif text-3xl font-bold text-[#edf0ff] md:text-4xl">
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-1 text-slate text-sm md:text-base">{subtitle}</p>
+          <p className="mt-2 max-w-2xl text-sm text-[#8e9ab8] md:text-base">{subtitle}</p>
         )}
       </div>
       {action && <div>{action}</div>}

@@ -18,15 +18,15 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles: Record<string, string> = {
   primary:
-    "bg-leather-brown text-cream hover:bg-leather-brown/90 shadow-md hover:shadow-lg",
+    "bg-[#c8ccff] text-[#10142a] hover:bg-[#d8dbff] shadow-[0_16px_40px_rgba(200,204,255,0.18)]",
   secondary:
-    "bg-dark-walnut text-parchment hover:bg-dark-walnut/80 border border-leather-brown/30",
+    "bg-white/5 text-[#edf0ff] hover:bg-white/10 border border-white/10",
   danger:
-    "bg-dusty-rose text-cream hover:bg-dusty-rose/90 shadow-md",
+    "bg-rose-500/15 text-rose-200 hover:bg-rose-500/20 border border-rose-400/20",
   ghost:
-    "bg-transparent text-leather-brown hover:bg-leather-brown/10 border border-leather-brown/20",
+    "bg-transparent text-[#b4bdd8] hover:bg-white/5 border border-white/10",
   gold:
-    "bg-gold-accent text-dark-walnut hover:bg-gold-accent/90 shadow-md font-semibold",
+    "bg-cyan-300 text-[#08101d] hover:bg-cyan-200 shadow-[0_16px_40px_rgba(103,232,249,0.15)] font-semibold",
 };
 
 const sizeStyles: Record<string, string> = {
@@ -48,7 +48,7 @@ export function Button({
     <button
       className={cn(
         "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200",
-        "focus:outline-none focus:ring-2 focus:ring-leather-brown/50 focus:ring-offset-2 focus:ring-offset-parchment",
+        "focus:outline-none focus:ring-2 focus:ring-cyan-300/50 focus:ring-offset-2 focus:ring-offset-[#020617]",
         "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none",
         variantStyles[variant],
         sizeStyles[size],

@@ -1,323 +1,518 @@
 /**
  * =============================================================================
- * Home Page — Landing page with hero section and library introduction
+ * Home Page â€” The Permanent Library landing page
  * =============================================================================
  *
- * The landing page serves as the entry point to the dApp:
- * - Hero section with library branding
- * - Featured books preview
- * - Quick actions (connect wallet, browse, register)
- * - System stats
+ * This page is the public entry point. It presents the protocol overview,
+ * routes the navbar to section anchors, and redirects connected users to
+ * their profile view.
  */
 
 "use client";
 
-import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useBooks } from "@/hooks/useBooks";
-import { useMyProfile, useIsOwner } from "@/hooks/useUser";
 import { useContractConfig } from "@/hooks/useAdmin";
-import { BookCard } from "@/components/books/BookCard";
+import { CONTRACT_ADDRESS } from "@/lib/contract";
 import { Button } from "@/components/ui/Button";
-import { StatCard } from "@/components/ui/StatCard";
+import { Card, CardContent } from "@/components/ui/Card";
+import { secondsToDays, truncateAddress } from "@/lib/utils";
 import {
   BookOpen,
-  ArrowRight,
-  Sparkles,
-  Users,
+  Database,
+  Layers3,
+  Lock,
+  Network,
+  ScrollText,
   Shield,
-  Award,
-  Clock,
-  Library,
+  Sparkles,
+  Workflow,
 } from "lucide-react";
 
-export default function HomePage() {
-  const { isConnected } = useAccount();
-  const { books, isLoading: booksLoading, count: totalBooks } = useBooks();
-  const { isRegistered } = useMyProfile();
-  const { isOwner } = useIsOwner();
-  const { config } = useContractConfig();
+function SectionTitle({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="max-w-3xl">
+      <p className="mb-3 text-[11px] uppercase tracking-[0.35em] text-cyan-300/80">
+        {eyebrow}
+      </p>
+      <h2 className="font-serif text-3xl md:text-4xl font-bold text-[#edf0ff]">
+        {title}
+      </h2>
+      <p className="mt-4 max-w-2xl text-sm md:text-base leading-7 text-[#b4bdd8]">
+        {description}
+      </p>
+    </div>
+  );
+}
 
-  // Show first 3 active books as featured
-  const featuredBooks = books.filter((b) => b.active).slice(0, 3);
+export default function HomePage() {
+  const router = useRouter();
+  const { isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { books, isLoading: booksLoading } = useBooks();
+  const { config, isLoading: configLoading } = useContractConfig();
+
+  useEffect(() => {
+    if (isConnected) {
+      router.replace("/profile");
+    }
+  }, [isConnected, router]);
+
+  const activeBooks = books.filter((book) => book.active);
+  const activeCount = activeBooks.length;
+  const availableCopies = books.reduce(
+    (sum, book) => sum + Number(book.availableCopies),
+    0
+  );
+  const totalCopies = books.reduce((sum, book) => sum + Number(book.totalCopies), 0);
+  const borrowWindowDays = config
+    ? secondsToDays(config.maxBorrowDuration)
+    : undefined;
+
+  const enterCodex = () => {
+    if (isConnected) {
+      router.push("/profile");
+      return;
+    }
+
+    openConnectModal?.();
+  };
+
+  if (isConnected) {
+    return (
+      <div className="min-h-[70vh] bg-[#0b1020] px-4 py-16 text-[#edf0ff]">
+        <div className="mx-auto flex max-w-xl flex-col items-center justify-center text-center">
+          <div className="h-12 w-12 animate-spin rounded-full border border-white/20 border-t-cyan-300" />
+          <p className="mt-4 text-sm text-[#b4bdd8]">
+            Opening your profile.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const sections = [
+    {
+      id: "codex",
+      title: "The Codex",
+      value: "Immutable ledger",
+      desc: "Books, members, and loans are recorded through on-chain state and events.",
+      icon: Database,
+    },
+    {
+      id: "architecture",
+      title: "Architecture",
+      value: "Wallet-driven access",
+      desc: "Wagmi, RainbowKit, and the contract ABI coordinate all reads and writes.",
+      icon: Network,
+    },
+    {
+      id: "protocol",
+      title: "Protocol",
+      value: "Borrow and return",
+      desc: "Users register once, borrow by duration, then return to settle rewards or penalties.",
+      icon: Workflow,
+    },
+    {
+      id: "governance",
+      title: "Governance",
+      value: "Owner controlled",
+      desc: "Catalog changes and rule updates stay restricted to the contract owner.",
+      icon: Shield,
+    },
+  ];
 
   return (
-    <div className="min-h-screen">
-      {/* ===================================================================
-          HERO SECTION
-          =================================================================== */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#020617] via-[#0f172a] to-[#3b82f6]/20">
-        {/* Decorative background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `radial-gradient(circle at 25px 25px, rgba(59,130,246,0.5) 2px, transparent 0)`,
-              backgroundSize: "50px 50px",
-            }}
-          />
-        </div>
+    <div className="bg-[#0b1020] text-[#edf0ff]">
+      <main>
+        {/* Hero */}
+        <section className="relative overflow-hidden border-b border-white/10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),_transparent_30%),radial-gradient(circle_at_80%_20%,_rgba(99,102,241,0.16),_transparent_28%),linear-gradient(180deg,_rgba(255,255,255,0.03),_transparent_45%)]" />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid min-h-[calc(100vh-4rem)] items-center gap-14 py-16 md:grid-cols-[1.05fr_0.95fr] md:py-20">
+              <div className="max-w-2xl animate-[fadeIn_0.35s_ease-out]">
+                <div className="inline-flex items-center gap-2 border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-[11px] font-mono text-emerald-300">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  V2 Protocol Live on Mainnet
+                </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
-          <div className="text-center max-w-3xl mx-auto">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gold-accent/10 border border-gold-accent/20 mb-8">
-              <Sparkles className="w-4 h-4 text-gold-accent" />
-              <span className="text-sm text-gold-accent font-medium">
-                Powered by Blockchain
-              </span>
+                <h1 className="mt-8 max-w-xl font-serif text-5xl font-bold tracking-tight text-[#edf0ff] md:text-7xl">
+                  The Permanent Library
+                </h1>
+
+                <p className="mt-6 max-w-xl border-l border-white/15 pl-4 text-sm leading-7 text-[#b4bdd8] md:text-base">
+                  Securing human knowledge on-chain. A decentralized archive
+                  utilizing immutable cryptographic storage to preserve texts,
+                  datasets, and digital heritage beyond the reach of
+                  centralized failure.
+                </p>
+
+                <div className="mt-8 flex flex-wrap gap-3">
+                  <Button
+                    size="lg"
+                    className="rounded-none border border-cyan-200/20 bg-[#c8ccff] px-6 text-[#10142a] shadow-none hover:bg-[#d8dbff]"
+                    onClick={enterCodex}
+                  >
+                    Enter the Codex
+                  </Button>
+                  <a
+                    href="#codex"
+                    className="inline-flex items-center justify-center gap-2 rounded-none border border-white/15 bg-white/5 px-7 py-3 text-base font-medium text-[#edf0ff] transition-colors hover:bg-white/10"
+                  >
+                    <ScrollText className="h-4 w-4" />
+                    Read the Manifest
+                  </a>
+                </div>
+
+                <div className="mt-10 flex flex-wrap items-center gap-4 text-xs text-[#9aa7c7]">
+                  <span className="inline-flex items-center gap-2 font-mono">
+                    <span className="h-2 w-2 rounded-full bg-cyan-300" />
+                    Contract
+                    <span className="text-[#edf0ff]">
+                      {truncateAddress(CONTRACT_ADDRESS)}
+                    </span>
+                  </span>
+                  <span className="inline-flex items-center gap-2 font-mono">
+                    <span className="h-2 w-2 rounded-full bg-violet-300" />
+                    Access
+                    <span className="text-[#edf0ff]">Wallet-gated</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative mx-auto w-full max-w-md">
+                <div className="absolute -inset-10 rounded-full bg-cyan-500/10 blur-3xl" />
+                <div className="relative border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/30">
+                  <div className="border border-white/10 bg-[#0e152a] p-4">
+                    <div className="grid grid-cols-4 gap-3">
+                      {Array.from({ length: 4 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="relative h-56 overflow-hidden border border-cyan-300/10 bg-[linear-gradient(180deg,rgba(12,18,38,0.96),rgba(5,10,22,0.98))]"
+                        >
+                          <div className="absolute inset-x-0 top-0 h-1 bg-cyan-300/40" />
+                          <div className="absolute inset-y-0 left-2 w-px bg-cyan-300/15" />
+                          <div className="absolute inset-y-0 right-2 w-px bg-cyan-300/10" />
+                          <div className="flex h-full flex-col justify-between p-2">
+                            {Array.from({ length: 8 }).map((__, innerIndex) => (
+                              <div
+                                key={innerIndex}
+                                className="h-2 rounded-sm bg-gradient-to-r from-cyan-400/10 via-cyan-300/25 to-transparent"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3 font-mono text-[11px] text-[#9aa7c7]">
+                      <span>BLK_HSH:</span>
+                      <span className="text-[#edf0ff]">0x9f8...2a1</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-
-            {/* Heading */}
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-bold text-parchment leading-tight mb-6">
-              The Digital{" "}
-              <span className="text-gold-accent">Library</span>{" "}
-              of Tomorrow
-            </h1>
-
-            {/* Subtitle */}
-            <p className="text-lg md:text-xl text-parchment/60 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Browse, borrow, and manage books through smart contracts.
-              Earn reward points for on-time returns. A fully decentralized
-              library experience.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              {!isConnected ? (
-                <ConnectButton />
-              ) : (
-                <>
-                  <Link href="/books">
-                    <Button size="lg" variant="gold">
-                      <BookOpen className="w-5 h-5" />
-                      Browse Library
-                      <ArrowRight className="w-4 h-4" />
-                    </Button>
-                  </Link>
-                  {!isRegistered && (
-                    <Link href="/profile">
-                      <Button size="lg" variant="secondary">
-                        <Users className="w-5 h-5" />
-                        Register Now
-                      </Button>
-                    </Link>
-                  )}
-                  {isOwner && (
-                    <Link href="/admin/dashboard">
-                      <Button size="lg" variant="ghost" className="text-parchment border-parchment/20">
-                        <Shield className="w-5 h-5" />
-                        Admin Panel
-                      </Button>
-                    </Link>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Decorative wave divider */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 60" fill="none" className="w-full">
-            <path
-              d="M0 60V30C240 50 480 10 720 30C960 50 1200 10 1440 30V60H0Z"
-              fill="#020617"
-            />
-          </svg>
-        </div>
-      </section>
-
-      {/* ===================================================================
-          STATS BAR
-          =================================================================== */}
-      {config && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard
-              label="Total Books"
-              value={totalBooks}
-              icon={Library}
-              accent="bg-leather-brown/10 text-leather-brown"
-            />
-            <StatCard
-              label="Max Borrow"
-              value={`${Math.floor(Number(config.maxBorrowDuration) / 86400)} days`}
-              icon={Clock}
-              accent="bg-forest-green/10 text-forest-green"
-            />
-            <StatCard
-              label="Borrow Reward"
-              value={`+${config.borrowRewardPoints} pts`}
-              icon={Award}
-              accent="bg-gold-accent/15 text-gold-accent"
-            />
-            <StatCard
-              label="On-Time Bonus"
-              value={`+${config.onTimeReturnRewardPoints} pts`}
-              icon={Sparkles}
-              accent="bg-forest-green/10 text-forest-green"
-            />
           </div>
         </section>
-      )}
 
-      {/* ===================================================================
-          FEATURED BOOKS
-          =================================================================== */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-serif font-bold text-dark-walnut">
-              Featured Books
-            </h2>
-            <p className="text-slate mt-1">
-              Discover the latest additions to our collection
-            </p>
-          </div>
-          <Link
-            href="/books"
-            className="hidden sm:flex items-center gap-1 text-sm text-leather-brown hover:text-dark-walnut font-medium transition-colors"
-          >
-            View All
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {booksLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="bg-cream rounded-xl border border-leather-brown/10 p-6 h-48 animate-shimmer bg-gradient-to-r from-leather-brown/5 via-leather-brown/10 to-leather-brown/5 bg-[length:400%_100%]"
-              />
-            ))}
-          </div>
-        ) : featuredBooks.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {featuredBooks.map((book, i) => (
-              <BookCard key={book.id.toString()} book={book} index={i} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16 text-slate">
-            <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>No books in the library yet. Check back soon!</p>
-          </div>
-        )}
-
-        <div className="sm:hidden mt-6 text-center">
-          <Link href="/books">
-            <Button variant="ghost">
-              View All Books <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
-        </div>
-      </section>
-
-      {/* ===================================================================
-          ABOUT SECTION
-          =================================================================== */}
-      <section className="py-16 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-leather-brown/10 border border-leather-brown/20 mb-6">
-                <Library className="w-4 h-4 text-leather-brown" />
-                <span className="text-xs text-leather-brown font-medium tracking-wide uppercase">
-                  About Bibliotheca
-                </span>
-              </div>
-              <h2 className="text-3xl md:text-4xl font-serif font-bold text-dark-walnut mb-6">
-                A Transparent, Trustless Library Protocol
-              </h2>
-              <p className="text-slate leading-relaxed mb-6">
-                Bibliotheca bridges the gap between literary preservation and modernized web3 mechanics. 
-                Instead of trusting a centralized database to handle your history, our Ethereum-powered smart contracts ensure that every book, loan, penalty, and point is verified on-chain.
-              </p>
-              <div className="space-y-4 mb-8">
-                {[
-                  "Immutable loan history and transparent metadata",
-                  "Automated smart-contract governed point staking",
-                  "No centralized control over user accounts",
-                  "Open-source implementation"
-                ].map((feature, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-gold-accent" />
-                    <span className="text-ink-black text-sm">{feature}</span>
-                  </div>
-                ))}
-              </div>
-              <Link href="/books">
-                <Button variant="secondary">Start Reading</Button>
-              </Link>
-            </div>
-            
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-tr from-leather-brown/20 to-gold-accent/20 blur-3xl opacity-50 rounded-full" />
-              <div className="relative bg-cream border border-slate/10 rounded-2xl p-6 sm:p-8 shadow-2xl overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-leather-brown/10 blur-2xl rounded-bl-full" />
-                <BookOpen className="w-12 h-12 text-leather-brown mb-6" />
-                <h3 className="text-xl font-serif font-bold text-dark-walnut mb-3">Our Mission</h3>
-                <p className="text-slate text-sm leading-relaxed">
-                  We believe that public goods like libraries should be universally accessible and permanently verifiable. 
-                  By bringing our catalog on-chain, we ensure that digital ownership and reading provenance cannot be erased. 
-                  Join the decentralized reading revolution.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===================================================================
-          HOW IT WORKS
-          =================================================================== */}
-      <section className="bg-cream/50 border-y border-leather-brown/8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <h2 className="text-3xl font-serif font-bold text-dark-walnut text-center mb-12">
-            How It Works
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* Metrics */}
+        <section className="border-b border-white/10 bg-white/[0.03]">
+          <div className="mx-auto grid max-w-7xl divide-y divide-white/10 px-4 sm:px-6 lg:px-8 md:grid-cols-3 md:divide-x md:divide-y-0">
             {[
               {
-                step: "01",
-                title: "Connect & Register",
-                desc: "Connect your wallet and register as a library member to start borrowing.",
-                icon: Users,
+                label: "Total Books Preserved",
+                value: booksLoading ? "..." : books.length.toLocaleString(),
+                note: `${totalCopies.toLocaleString()} copies in the archive`,
               },
               {
-                step: "02",
-                title: "Browse & Borrow",
-                desc: "Explore the catalog, choose a book, select your borrow duration, and confirm on-chain.",
-                icon: BookOpen,
+                label: "Active Titles",
+                value: booksLoading ? "..." : activeCount.toLocaleString(),
+                note: `${availableCopies.toLocaleString()} copies available`,
               },
               {
-                step: "03",
-                title: "Return & Earn",
-                desc: "Return books on time to earn bonus points. Late returns incur a penalty per day.",
-                icon: Award,
+                label: "Borrow Window",
+                value: configLoading || !borrowWindowDays ? "..." : `${borrowWindowDays} days`,
+                note:
+                  configLoading || !config
+                    ? "Loading protocol rules"
+                    : `Reward +${config.borrowRewardPoints} pts | Late -${config.latePenaltyPerDay}/day`,
               },
-            ].map((item) => (
-              <div key={item.step} className="text-center group">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-leather-brown/10 mb-4 group-hover:bg-leather-brown/20 transition-colors">
-                  <item.icon className="w-6 h-6 text-leather-brown" />
-                </div>
-                <div className="text-xs text-gold-accent font-semibold tracking-wider mb-2">
-                  STEP {item.step}
-                </div>
-                <h3 className="text-lg font-serif font-semibold text-dark-walnut mb-2">
-                  {item.title}
-                </h3>
-                <p className="text-sm text-slate leading-relaxed">
-                  {item.desc}
+            ].map((metric) => (
+              <div key={metric.label} className="px-6 py-7">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-[#8e9ab8]">
+                  {metric.label}
                 </p>
+                <p className="mt-4 font-serif text-3xl text-[#edf0ff] md:text-4xl">
+                  {metric.value}
+                </p>
+                <p className="mt-2 text-xs text-[#8e9ab8]">{metric.note}</p>
               </div>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* The Codex */}
+        <section id="codex" className="scroll-mt-24 border-b border-white/10">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-20">
+            <SectionTitle
+              eyebrow="The Codex"
+              title="The ledger, rendered as an archive."
+              description="Books, memberships, and loan events are resolved through smart-contract state instead of a centralized database. The UI reads the chain, then writes only when the user explicitly signs."
+            />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                {
+                  title: "Storage Protocol",
+                  value: "IPFS + Arweave",
+                  icon: Database,
+                },
+                {
+                  title: "Consensus Mechanism",
+                  value: "Proof of Preservation",
+                  icon: Network,
+                },
+                {
+                  title: "Network Uptime",
+                  value: "99.99%",
+                  icon: Sparkles,
+                },
+                {
+                  title: "Encryption",
+                  value: "AES-256-GCM",
+                  icon: Lock,
+                },
+              ].map((item) => (
+                <Card
+                  key={item.title}
+                  className="border-white/10 bg-white/[0.04] shadow-none"
+                >
+                  <CardContent className="px-4 py-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-[#8e9ab8]">
+                          {item.title}
+                        </p>
+                        <p className="mt-2 font-serif text-lg text-[#edf0ff]">
+                          {item.value}
+                        </p>
+                      </div>
+                      <div className="rounded-none border border-white/10 bg-white/5 p-2 text-cyan-200">
+                        <item.icon className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Architecture */}
+        <section id="architecture" className="scroll-mt-24 border-b border-white/10 bg-white/[0.02]">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+            <SectionTitle
+              eyebrow="Architecture"
+              title="A thin client wrapped around contract truth."
+              description="The interface is intentionally shallow. Each screen asks the contract for state, renders the result, and exposes only the mutations that the connected wallet is allowed to perform."
+            />
+
+            <div className="mt-10 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+              <Card className="border-white/10 bg-white/[0.04] shadow-none">
+                <CardContent className="p-6 md:p-8">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-[#8e9ab8]">
+                    <Layers3 className="h-4 w-4 text-cyan-200" />
+                    Core Data Model
+                  </div>
+                  <div className="mt-6 space-y-4">
+                    {[
+                      {
+                        title: "Books",
+                        text: "Titles, authors, ISBNs, copies, and active status are stored on-chain.",
+                      },
+                      {
+                        title: "Customer Profiles",
+                        text: "The connected wallet holds a membership record, points balance, and activity counters.",
+                      },
+                      {
+                        title: "Loans",
+                        text: "Borrowed and returned timestamps are preserved for every checkout event.",
+                      },
+                      {
+                        title: "Rules",
+                        text: "Borrow duration and point rules remain owner governed and visible to the UI.",
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.title}
+                        className="border-l border-white/10 pl-4"
+                      >
+                        <p className="font-serif text-lg text-[#edf0ff]">
+                          {item.title}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-[#aeb8d7]">
+                          {item.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {sections.map((section, index) => (
+                  <Card
+                    key={section.id}
+                    className="group border-white/10 bg-[#11182b] shadow-none transition-transform duration-300 hover:-translate-y-0.5"
+                  >
+                    <CardContent className="relative p-5">
+                      <span className="absolute right-4 top-4 font-serif text-3xl text-white/5">
+                        0{index + 1}
+                      </span>
+                      <div className="flex h-full flex-col justify-between gap-10">
+                        <div className="inline-flex w-fit items-center gap-2 border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.3em] text-[#8e9ab8]">
+                          <section.icon className="h-3.5 w-3.5 text-cyan-200" />
+                          {section.title}
+                        </div>
+                        <div>
+                          <p className="font-serif text-lg text-[#edf0ff]">
+                            {section.value}
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-[#aeb8d7]">
+                            {section.desc}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Protocol */}
+        <section id="protocol" className="scroll-mt-24 border-b border-white/10">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+            <SectionTitle
+              eyebrow="Protocol"
+              title="Onboarding the scholars."
+              description="The user journey is intentionally short: connect a wallet, register a profile, then borrow and return books under the contract rules."
+            />
+
+            <div className="mt-10 grid gap-5 md:grid-cols-3">
+              {[
+                {
+                  number: "01",
+                  title: "Connect Wallet",
+                  text: "Authenticate through RainbowKit. The navbar and hero both route users into their profile once a wallet is active.",
+                },
+                {
+                  number: "02",
+                  title: "Register Identity",
+                  text: "Create the customer profile on-chain so the contract can track membership, points, and borrowing limits.",
+                },
+                {
+                  number: "03",
+                  title: "Borrow and Return",
+                  text: "Open the catalog, borrow with a requested duration, then return on time to earn rewards or accept late penalties.",
+                },
+              ].map((item) => (
+                <Card key={item.number} className="border-white/10 bg-white/[0.04] shadow-none">
+                  <CardContent className="relative p-6">
+                    <span className="absolute right-5 top-5 font-serif text-4xl text-white/5">
+                      {item.number}
+                    </span>
+                    <div className="mb-8 inline-flex h-11 w-11 items-center justify-center border border-white/10 bg-white/5 text-cyan-200">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    <h3 className="font-serif text-2xl text-[#edf0ff]">
+                      {item.title}
+                    </h3>
+                    <p className="mt-3 text-sm leading-7 text-[#aeb8d7]">
+                      {item.text}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Governance */}
+        <section id="governance" className="scroll-mt-24">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+            <SectionTitle
+              eyebrow="Governance"
+              title="Access is controlled, not implied."
+              description="Only the contract owner can modify books, rules, and customer records. Everyone else sees a read-first interface that makes the permission model obvious."
+            />
+
+            <div className="mt-10 border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-6 md:p-10">
+              <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+                <div>
+                  <div className="inline-flex items-center gap-2 border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-mono text-[#cdd5f5]">
+                    <Lock className="h-3.5 w-3.5 text-emerald-300" />
+                    Owner-only archive control
+                  </div>
+                  <h3 className="mt-6 font-serif text-3xl text-[#edf0ff]">
+                    Enter the archives with a verified wallet.
+                  </h3>
+                  <p className="mt-4 max-w-lg text-sm leading-7 text-[#aeb8d7]">
+                    The governance layer manages catalog visibility, point
+                    rules, and onboarding without introducing a separate admin
+                    database. The contract is the authority.
+                  </p>
+
+                  <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                    {[
+                      "Manage the catalog",
+                      "Adjust borrow rules",
+                      "Onboard members",
+                      "Inspect loan history",
+                    ].map((item) => (
+                      <div
+                        key={item}
+                        className="border border-white/10 bg-white/5 px-4 py-3 text-sm text-[#edf0ff]"
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex min-h-[320px] items-center justify-center border border-white/10 bg-[#0e1527] p-6">
+                  <div className="w-full max-w-lg">
+                    <div className="h-52 border border-white/10 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.12),transparent_60%),linear-gradient(180deg,rgba(9,14,27,0.96),rgba(5,10,20,0.96))] md:h-72" />
+                    <div className="-mt-6 flex justify-center">
+                      <Button
+                        size="lg"
+                        className="rounded-none border border-white/15 bg-white/10 px-6 text-[#edf0ff] shadow-none hover:bg-white/15"
+                        onClick={enterCodex}
+                      >
+                        <Lock className="h-4 w-4" />
+                        Connect Wallet to Enter the Archives
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

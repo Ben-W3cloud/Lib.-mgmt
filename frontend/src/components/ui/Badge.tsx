@@ -14,11 +14,11 @@ interface BadgeProps {
 }
 
 const variants: Record<string, string> = {
-  success: "bg-forest-green/15 text-forest-green border-forest-green/25",
-  warning: "bg-gold-accent/15 text-gold-accent border-gold-accent/30",
-  danger: "bg-dusty-rose/15 text-dusty-rose border-dusty-rose/25",
-  neutral: "bg-slate/10 text-slate border-slate/20",
-  gold: "bg-gold-accent/20 text-gold-accent border-gold-accent/30",
+  success: "bg-emerald-400/10 text-emerald-300 border-emerald-300/20",
+  warning: "bg-amber-400/10 text-amber-200 border-amber-300/20",
+  danger: "bg-rose-500/10 text-rose-200 border-rose-400/20",
+  neutral: "bg-white/5 text-[#9aa7c7] border-white/10",
+  gold: "bg-cyan-300/10 text-cyan-200 border-cyan-300/20",
 };
 
 export function Badge({ variant, children, className, dot = false }: BadgeProps) {
@@ -34,11 +34,11 @@ export function Badge({ variant, children, className, dot = false }: BadgeProps)
         <span
           className={cn(
             "w-1.5 h-1.5 rounded-full",
-            variant === "success" && "bg-forest-green",
-            variant === "warning" && "bg-gold-accent",
-            variant === "danger" && "bg-dusty-rose",
-            variant === "neutral" && "bg-slate",
-            variant === "gold" && "bg-gold-accent"
+            variant === "success" && "bg-emerald-300",
+            variant === "warning" && "bg-amber-300",
+            variant === "danger" && "bg-rose-300",
+            variant === "neutral" && "bg-[#9aa7c7]",
+            variant === "gold" && "bg-cyan-300"
           )}
         />
       )}

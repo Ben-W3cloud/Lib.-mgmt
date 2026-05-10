@@ -25,12 +25,14 @@ export function AddBookForm() {
   // Clear form on successful submission
   useEffect(() => {
     if (isSuccess) {
-      setTitle("");
-      setAuthor("");
-      setIsbn("");
-      setCopies("");
-      // Reset the mutation state after a delay so the form is usable again
-      setTimeout(() => reset(), 2000);
+      const timer = setTimeout(() => {
+        setTitle("");
+        setAuthor("");
+        setIsbn("");
+        setCopies("");
+        reset();
+      }, 2000);
+      return () => clearTimeout(timer);
     }
   }, [isSuccess, reset]);
 
@@ -42,7 +44,7 @@ export function AddBookForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5 text-[#edf0ff]">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
           label="Title"
@@ -82,9 +84,9 @@ export function AddBookForm() {
           hint="Must be at least 1"
         />
       </div>
-      <Button type="submit" isLoading={isPending} disabled={isSuccess} size="lg">
+      <Button type="submit" isLoading={isPending} disabled={isSuccess} size="lg" className="w-full">
         <BookPlus className="w-4 h-4" />
-        {isSuccess ? "Book Added! ✓" : "Add Book to Library"}
+        {isSuccess ? "Book Added!" : "Add Book to Archive"}
       </Button>
     </form>
   );

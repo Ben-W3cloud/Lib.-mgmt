@@ -43,9 +43,9 @@ export function BookGrid({ books, isLoading, showInactive = false }: BookGridPro
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      {displayBooks.map((book, index) => (
-        <BookCard key={book.id.toString()} book={book} index={index} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {displayBooks.map((book) => (
+        <BookCard key={book.id.toString()} book={book} />
       ))}
     </div>
   );

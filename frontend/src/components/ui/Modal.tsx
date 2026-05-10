@@ -55,24 +55,23 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       }}
     >
       {/* Overlay backdrop */}
-      <div className="absolute inset-0 bg-dark-walnut/60 backdrop-blur-sm animate-fadeIn" />
+      <div className="absolute inset-0 bg-[#020617]/80 backdrop-blur-md animate-fadeIn" />
 
       {/* Modal content */}
       <div
         className={cn(
-          "relative bg-parchment rounded-2xl shadow-2xl border border-leather-brown/15",
-          "w-full max-w-lg max-h-[85vh] overflow-y-auto animate-slideUp",
+          "relative w-full max-w-lg max-h-[85vh] overflow-y-auto animate-slideUp rounded-2xl border border-white/10 bg-[#0f1729] shadow-[0_30px_120px_rgba(0,0,0,0.5)]",
           className
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-leather-brown/10">
-          <h2 className="text-lg font-serif font-semibold text-dark-walnut">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+          <h2 className="text-lg font-serif font-semibold text-[#edf0ff]">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-leather-brown/10 transition-colors text-slate"
+            className="rounded-lg p-1.5 text-[#8e9ab8] transition-colors hover:bg-white/5 hover:text-[#edf0ff]"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />

@@ -1,12 +1,7 @@
 /**
  * =============================================================================
- * UserManagement — Admin form for looking up and managing customers
+ * UserManagement â€” Admin tools for customer lookup and onboarding
  * =============================================================================
- *
- * Features:
- * 1. Look up any customer by wallet address → getCustomer(address)
- * 2. Register/update a customer → ownerUpsertCustomer(address, ...)
- * 3. View customer's active loans → getCustomerActiveLoanIds(address)
  */
 
 "use client";
@@ -20,20 +15,17 @@ import { StatCard } from "@/components/ui/StatCard";
 import { useCustomerProfile } from "@/hooks/useUser";
 import { useOwnerUpsertCustomer } from "@/hooks/useAdmin";
 import { formatDate, formatPointsBalance } from "@/lib/utils";
-import { Search, UserPlus, BookOpen, Award, Calendar, Activity } from "lucide-react";
+import { Search, UserPlus, BookOpen, Award, Calendar, Activity, Shield } from "lucide-react";
 
 export function UserManagement() {
   return (
-    <div className="space-y-8">
+    <div className="grid gap-6 lg:grid-cols-2">
       <CustomerLookup />
       <RegisterCustomerForm />
     </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Customer Lookup — Search by wallet address
-// ---------------------------------------------------------------------------
 function CustomerLookup() {
   const [address, setAddress] = useState("");
   const [searchAddress, setSearchAddress] = useState<`0x${string}` | undefined>();
@@ -48,17 +40,20 @@ function CustomerLookup() {
   };
 
   return (
-    <Card>
+    <Card className="border-white/10 bg-white/[0.04]">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Search className="w-5 h-5 text-leather-brown" />
-          <h2 className="text-lg font-serif font-semibold text-dark-walnut">
+          <Search className="h-5 w-5 text-cyan-200" />
+          <h2 className="text-lg font-serif font-semibold text-[#edf0ff]">
             Look Up Customer
           </h2>
         </div>
+        <p className="mt-1 text-sm text-[#8e9ab8]">
+          Search any wallet to inspect registration and borrow activity.
+        </p>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSearch} className="flex gap-3 mb-5">
+        <form onSubmit={handleSearch} className="flex gap-3">
           <div className="flex-1">
             <Input
               placeholder="0x... wallet address"
@@ -67,66 +62,73 @@ function CustomerLookup() {
             />
           </div>
           <Button type="submit" isLoading={isLoading}>
-            <Search className="w-4 h-4" />
+            <Search className="h-4 w-4" />
             Search
           </Button>
         </form>
 
-        {/* Results */}
         {searchAddress && !isLoading && (
-          isError || !profile ? (
-            <div className="text-center py-6 text-sm text-slate">
-              Customer not registered at this address.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-parchment/50 rounded-lg p-4 border border-leather-brown/10">
-                <h3 className="font-serif font-semibold text-dark-walnut text-lg">
-                  {profile.fullName}
-                </h3>
-                <p className="text-sm text-slate">{profile.email || "No email"}</p>
-                <p className="text-xs text-slate/60 mt-1">
-                  Member: {profile.memberCode || "—"} · Joined: {formatDate(profile.joinedAt)}
-                </p>
+          <div className="mt-5">
+            {isError || !profile ? (
+              <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-[#8e9ab8]">
+                Customer not registered at this address.
               </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-white/10 bg-[#0f1729] p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-serif text-2xl font-semibold text-[#edf0ff]">
+                        {profile.fullName}
+                      </h3>
+                      <p className="mt-1 text-sm text-[#8e9ab8]">
+                        {profile.email || "No email"}
+                      </p>
+                      <p className="mt-2 text-xs text-[#7080a4]">
+                        Member: {profile.memberCode || "—"} · Joined: {formatDate(profile.joinedAt)}
+                      </p>
+                    </div>
+                    <Badge variant="success" dot>
+                      Registered
+                    </Badge>
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard
-                  label="Active Loans"
-                  value={profile.activeLoansCount}
-                  icon={BookOpen}
-                  accent="bg-leather-brown/10 text-leather-brown"
-                />
-                <StatCard
-                  label="Lifetime Borrows"
-                  value={Number(profile.lifetimeBorrows)}
-                  icon={Activity}
-                  accent="bg-forest-green/10 text-forest-green"
-                />
-                <StatCard
-                  label="Points Balance"
-                  value={formatPointsBalance(profile.pointsBalance)}
-                  icon={Award}
-                  accent="bg-gold-accent/15 text-gold-accent"
-                />
-                <StatCard
-                  label="Joined"
-                  value={formatDate(profile.joinedAt)}
-                  icon={Calendar}
-                  accent="bg-slate/10 text-slate"
-                />
+                <div className="grid gap-3 md:grid-cols-4">
+                  <StatCard
+                    label="Active Loans"
+                    value={profile.activeLoansCount}
+                    icon={BookOpen}
+                    accent="bg-cyan-300/10 text-cyan-200"
+                  />
+                  <StatCard
+                    label="Lifetime Borrows"
+                    value={Number(profile.lifetimeBorrows)}
+                    icon={Activity}
+                    accent="bg-emerald-400/10 text-emerald-300"
+                  />
+                  <StatCard
+                    label="Points Balance"
+                    value={formatPointsBalance(profile.pointsBalance)}
+                    icon={Award}
+                    accent="bg-violet-300/10 text-violet-200"
+                  />
+                  <StatCard
+                    label="Joined"
+                    value={formatDate(profile.joinedAt)}
+                    icon={Calendar}
+                    accent="bg-white/10 text-[#cdd5f5]"
+                  />
+                </div>
               </div>
-            </div>
-          )
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Register/Update Customer Form
-// ---------------------------------------------------------------------------
 function RegisterCustomerForm() {
   const [customerAddr, setCustomerAddr] = useState("");
   const [fullName, setFullName] = useState("");
@@ -149,15 +151,15 @@ function RegisterCustomerForm() {
   };
 
   return (
-    <Card>
+    <Card className="border-white/10 bg-white/[0.04]">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <UserPlus className="w-5 h-5 text-forest-green" />
-          <h2 className="text-lg font-serif font-semibold text-dark-walnut">
+          <UserPlus className="h-5 w-5 text-cyan-200" />
+          <h2 className="text-lg font-serif font-semibold text-[#edf0ff]">
             Register / Update Customer
           </h2>
         </div>
-        <p className="text-sm text-slate mt-1">
+        <p className="mt-1 text-sm text-[#8e9ab8]">
           Onboard a new customer or update an existing profile.
         </p>
       </CardHeader>
@@ -171,7 +173,7 @@ function RegisterCustomerForm() {
             required
             disabled={isPending}
           />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <Input
               label="Full Name"
               placeholder="John Doe"
@@ -188,7 +190,7 @@ function RegisterCustomerForm() {
               disabled={isPending}
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid gap-4 md:grid-cols-2">
             <Input
               label="Member Code"
               placeholder="MBR-001"
@@ -205,9 +207,9 @@ function RegisterCustomerForm() {
               hint="Optional IPFS or URL for profile metadata"
             />
           </div>
-          <Button type="submit" isLoading={isPending} disabled={isSuccess}>
-            <UserPlus className="w-4 h-4" />
-            {isSuccess ? "Updated! ✓" : "Register / Update Customer"}
+          <Button type="submit" isLoading={isPending} disabled={isSuccess} className="w-full">
+            <Shield className="h-4 w-4" />
+            {isSuccess ? "Updated!" : "Register / Update Customer"}
           </Button>
         </form>
       </CardContent>

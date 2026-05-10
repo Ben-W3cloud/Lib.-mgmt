@@ -24,7 +24,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-dark-walnut"
+            className="block text-sm font-medium text-[#edf0ff]"
           >
             {label}
           </label>
@@ -33,23 +33,23 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            "w-full px-4 py-2.5 rounded-lg border bg-parchment/50 text-ink-black",
-            "placeholder:text-slate/60",
-            "focus:outline-none focus:ring-2 focus:ring-leather-brown/40 focus:border-leather-brown",
+            "w-full rounded-xl border bg-white/5 px-4 py-3 text-[#edf0ff]",
+            "placeholder:text-[#7380a5]",
+            "focus:outline-none focus:ring-2 focus:ring-cyan-300/30 focus:border-cyan-300/40",
             "transition-all duration-200",
             error
-              ? "border-dusty-rose focus:ring-dusty-rose/40"
-              : "border-leather-brown/20 hover:border-leather-brown/40",
+              ? "border-rose-400/40 focus:ring-rose-300/30"
+              : "border-white/10 hover:border-white/20",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             className
           )}
           {...props}
         />
         {hint && !error && (
-          <p className="text-xs text-slate">{hint}</p>
+          <p className="text-xs text-[#8e9ab8]">{hint}</p>
         )}
         {error && (
-          <p className="text-xs text-dusty-rose font-medium">{error}</p>
+          <p className="text-xs font-medium text-rose-200">{error}</p>
         )}
       </div>
     );

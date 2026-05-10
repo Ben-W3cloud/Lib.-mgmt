@@ -26,15 +26,15 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "bg-cream rounded-xl border border-leather-brown/10 p-5",
-        "hover:shadow-md transition-shadow duration-300",
+        "rounded-2xl border border-white/10 bg-white/[0.04] p-5",
+        "transition-shadow duration-300 hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)]",
         className
       )}
     >
       <div className="flex items-start justify-between">
         <div className="space-y-1">
-          <p className="text-sm text-slate font-medium">{label}</p>
-          <p className="text-2xl font-serif font-bold text-dark-walnut">
+          <p className="text-sm font-medium text-[#8e9ab8]">{label}</p>
+          <p className="font-serif text-2xl font-bold text-[#edf0ff]">
             {value}
           </p>
         </div>

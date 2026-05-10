@@ -107,6 +107,7 @@
 /* Smooth page transitions */
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
 }
 
 /* Selection color */

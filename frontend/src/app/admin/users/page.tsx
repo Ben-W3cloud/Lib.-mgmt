@@ -1,6 +1,6 @@
 /**
  * =============================================================================
- * Admin Users Page — Customer management
+ * Admin Users Page â€” Customer management
  * =============================================================================
  */
 
@@ -13,10 +13,10 @@ import { PageHeader } from "@/components/layout/PageHeader";
 export default function AdminUsersPage() {
   return (
     <AdminGuard>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <PageHeader
           title="User Management"
-          subtitle="Look up customers and manage registrations"
+          subtitle="Inspect customer profiles and onboard members from the archive."
         />
         <UserManagement />
       </div>

@@ -1,13 +1,7 @@
 /**
  * =============================================================================
- * Book Detail Page — Single book view with borrow action
+ * Book Detail Page â€” Single archive entry with borrow flow
  * =============================================================================
- *
- * Displays:
- * - Full book details (title, author, ISBN, copies, status)
- * - Borrow button (with registration and availability checks)
- * - Borrower history
- * - Borrow modal for duration selection
  */
 
 "use client";
@@ -17,30 +11,23 @@ import { useBook, useBookBorrowerHistory } from "@/hooks/useBooks";
 import { useMyProfile } from "@/hooks/useUser";
 import { useAccount } from "wagmi";
 import { BorrowModal } from "@/components/books/BorrowModal";
+import { BookCover } from "@/components/books/BookCover";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { formatDate, truncateAddress, availabilityPercentage, cn } from "@/lib/utils";
 import {
+  ArrowLeft,
   BookOpen,
   Calendar,
-  Hash,
-  Layers,
   Clock,
+  Hash,
+  Layers3,
   Users,
-  ArrowLeft,
 } from "lucide-react";
-import { formatDate, truncateAddress, availabilityPercentage, cn } from "@/lib/utils";
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-
-// Book spine colors for the large detail display
-const SPINE_COLORS = [
-  "from-leather-brown to-dark-walnut",
-  "from-forest-green to-dark-walnut",
-  "from-dusty-rose to-dark-walnut",
-  "from-gold-accent to-leather-brown",
-];
 
 export default function BookDetailPage({
   params,
@@ -55,38 +42,36 @@ export default function BookDetailPage({
   const { isRegistered } = useMyProfile();
   const [borrowModalOpen, setBorrowModalOpen] = useState(false);
 
-  // Loading state
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        <Skeleton className="h-8 w-32" />
-        <div className="flex gap-6">
-          <Skeleton className="w-40 h-56 rounded-xl" />
-          <div className="flex-1 space-y-4">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-5 w-1/2" />
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-12 w-40" />
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+        <Skeleton className="h-5 w-40" />
+        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+          <Skeleton className="aspect-[4/5] rounded-2xl" />
+          <div className="space-y-4">
+            <Skeleton className="h-10 w-3/4" />
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-16 w-full" />
           </div>
         </div>
       </div>
     );
   }
 
-  // Not found
   if (isError || !book) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-        <BookOpen className="w-16 h-16 mx-auto text-leather-brown/20 mb-4" />
-        <h2 className="text-2xl font-serif font-bold text-dark-walnut mb-2">
+      <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 lg:px-8">
+        <BookOpen className="mx-auto mb-4 h-16 w-16 text-cyan-200/25" />
+        <h2 className="font-serif text-2xl font-bold text-[#edf0ff]">
           Book Not Found
         </h2>
-        <p className="text-slate mb-6">
-          This book does not exist in the library catalog.
+        <p className="mt-2 text-[#8e9ab8]">
+          This archive entry does not exist in the catalog.
         </p>
-        <Link href="/books">
+        <Link href="/books" className="mt-6 inline-flex">
           <Button variant="primary">
-            <ArrowLeft className="w-4 h-4" /> Back to Catalog
+            <ArrowLeft className="h-4 w-4" /> Back to Catalog
           </Button>
         </Link>
       </div>
@@ -95,171 +80,172 @@ export default function BookDetailPage({
 
   const availability = availabilityPercentage(book.availableCopies, book.totalCopies);
   const canBorrow = book.active && book.availableCopies > 0n && isConnected && isRegistered;
-  const spineGradient = SPINE_COLORS[Number(book.id) % SPINE_COLORS.length];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Back link */}
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <Link
         href="/books"
-        className="inline-flex items-center gap-1.5 text-sm text-slate hover:text-dark-walnut mb-6 transition-colors"
+        className="inline-flex items-center gap-2 text-sm text-[#8e9ab8] transition-colors hover:text-[#edf0ff]"
       >
-        <ArrowLeft className="w-4 h-4" />
+        <ArrowLeft className="h-4 w-4" />
         Back to Catalog
       </Link>
 
-      {/* Main content */}
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Book visual — large spine/cover simulation */}
-        <div className="shrink-0">
-          <div
-            className={cn(
-              "w-44 h-60 rounded-xl bg-gradient-to-b shadow-lg flex items-end p-4",
-              spineGradient
-            )}
-          >
-            <div className="text-parchment">
-              <p className="text-xs opacity-60 mb-1">{book.isbn}</p>
-              <p className="font-serif font-bold text-sm leading-tight line-clamp-3">
-                {book.title}
-              </p>
-            </div>
-          </div>
+      <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
+        <div className="space-y-4">
+          <BookCover
+            title={book.title}
+            author={book.author}
+            isbn={book.isbn}
+            seed={book.id.toString()}
+            size="lg"
+            className="mx-auto max-w-none"
+          />
+
+          <Card className="border-white/10 bg-white/[0.04]">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.35em] text-cyan-200/70">
+                    Availability
+                  </p>
+                  <p className="mt-2 font-serif text-2xl text-[#edf0ff]">{availability}%</p>
+                </div>
+                <Badge variant={book.active ? "success" : "danger"} dot>
+                  {book.active ? "Active" : "Disabled"}
+                </Badge>
+              </div>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-700",
+                    availability > 50
+                      ? "bg-emerald-300"
+                      : availability > 20
+                        ? "bg-cyan-200"
+                        : "bg-rose-300"
+                  )}
+                  style={{ width: `${availability}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Book details */}
-        <div className="flex-1 space-y-6">
-          {/* Title + status */}
-          <div>
-            <div className="flex items-start gap-3 mb-2">
-              <h1 className="text-3xl font-serif font-bold text-dark-walnut">
-                {book.title}
-              </h1>
-              <Badge variant={book.active ? "success" : "danger"} dot className="mt-1">
-                {book.active ? "Active" : "Disabled"}
-              </Badge>
-            </div>
-            <p className="text-lg text-slate">by {book.author}</p>
-          </div>
+        <div className="space-y-6">
+          <Card className="border-white/10 bg-white/[0.04]">
+            <CardContent className="p-6 md:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-mono uppercase tracking-[0.3em] text-[#cdd5f5]">
+                    Archive File
+                  </div>
+                  <h1 className="mt-5 font-serif text-4xl font-bold text-[#edf0ff]">
+                    {book.title}
+                  </h1>
+                  <p className="mt-2 text-lg text-[#8e9ab8]">by {book.author}</p>
+                </div>
 
-          {/* Metadata grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-3 text-sm">
-              <div className="p-2 rounded-lg bg-leather-brown/5">
-                <Hash className="w-4 h-4 text-leather-brown" />
+                <Badge variant={book.active ? "success" : "danger"} dot className="mt-1">
+                  {book.active ? "Borrowable" : "Disabled"}
+                </Badge>
               </div>
-              <div>
-                <p className="text-xs text-slate">ISBN</p>
-                <p className="font-mono text-dark-walnut">{book.isbn}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className="p-2 rounded-lg bg-leather-brown/5">
-                <Layers className="w-4 h-4 text-leather-brown" />
-              </div>
-              <div>
-                <p className="text-xs text-slate">Copies</p>
-                <p className="text-dark-walnut">
-                  {Number(book.availableCopies)} / {Number(book.totalCopies)} available
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className="p-2 rounded-lg bg-leather-brown/5">
-                <Calendar className="w-4 h-4 text-leather-brown" />
-              </div>
-              <div>
-                <p className="text-xs text-slate">Added</p>
-                <p className="text-dark-walnut">{formatDate(book.createdAt)}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 text-sm">
-              <div className="p-2 rounded-lg bg-leather-brown/5">
-                <Clock className="w-4 h-4 text-leather-brown" />
-              </div>
-              <div>
-                <p className="text-xs text-slate">Last Updated</p>
-                <p className="text-dark-walnut">{formatDate(book.updatedAt)}</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Availability bar */}
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-slate">Availability</span>
-              <span className="font-medium text-dark-walnut">{availability}%</span>
-            </div>
-            <div className="h-2.5 bg-leather-brown/10 rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-all duration-700",
-                  availability > 50 ? "bg-forest-green" : availability > 20 ? "bg-gold-accent" : "bg-dusty-rose"
+              <div className="mt-8 grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-[#8e9ab8]">
+                    <Hash className="h-4 w-4 text-cyan-200" />
+                    ISBN
+                  </div>
+                  <p className="mt-3 font-mono text-sm text-[#edf0ff]">{book.isbn}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-[#8e9ab8]">
+                    <Layers3 className="h-4 w-4 text-cyan-200" />
+                    Copies
+                  </div>
+                  <p className="mt-3 text-sm text-[#edf0ff]">
+                    {Number(book.availableCopies)} of {Number(book.totalCopies)} available
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-[#8e9ab8]">
+                    <Calendar className="h-4 w-4 text-cyan-200" />
+                    Added
+                  </div>
+                  <p className="mt-3 text-sm text-[#edf0ff]">{formatDate(book.createdAt)}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-[#8e9ab8]">
+                    <Clock className="h-4 w-4 text-cyan-200" />
+                    Updated
+                  </div>
+                  <p className="mt-3 text-sm text-[#edf0ff]">{formatDate(book.updatedAt)}</p>
+                </div>
+              </div>
+
+              <div className="mt-8 flex flex-wrap gap-3">
+                {!isConnected ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-[#8e9ab8]">
+                      Connect your wallet to borrow this book.
+                    </p>
+                    <ConnectButton />
+                  </div>
+                ) : !isRegistered ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-[#8e9ab8]">
+                      Register your profile before borrowing.
+                    </p>
+                    <Link href="/profile">
+                      <Button variant="gold">Register Now</Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <Button
+                    size="lg"
+                    variant="gold"
+                    onClick={() => setBorrowModalOpen(true)}
+                    disabled={!canBorrow}
+                  >
+                    <BookOpen className="h-5 w-5" />
+                    {!book.active
+                      ? "Book Disabled"
+                      : book.availableCopies === 0n
+                        ? "No Copies Available"
+                        : "Borrow This Book"}
+                  </Button>
                 )}
-                style={{ width: `${availability}%` }}
-              />
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Borrow action */}
-          <div className="pt-2">
-            {!isConnected ? (
-              <div className="space-y-2">
-                <p className="text-sm text-slate">Connect your wallet to borrow this book.</p>
-                <ConnectButton />
-              </div>
-            ) : !isRegistered ? (
-              <div className="space-y-2">
-                <p className="text-sm text-slate">You need to register as a member first.</p>
-                <Link href="/profile">
-                  <Button variant="gold">Register Now</Button>
-                </Link>
-              </div>
-            ) : (
-              <Button
-                size="lg"
-                variant="gold"
-                onClick={() => setBorrowModalOpen(true)}
-                disabled={!canBorrow}
-              >
-                <BookOpen className="w-5 h-5" />
-                {!book.active
-                  ? "Book Disabled"
-                  : book.availableCopies === 0n
-                  ? "No Copies Available"
-                  : "Borrow This Book"}
-              </Button>
-            )}
-          </div>
+          {borrowers.length > 0 && (
+            <Card className="border-white/10 bg-white/[0.04]">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-cyan-200" />
+                  <h2 className="font-serif text-xl font-semibold text-[#edf0ff]">
+                    Borrower History
+                  </h2>
+                  <Badge variant="neutral">{borrowers.length}</Badge>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {borrowers.map((addr, i) => (
+                    <span
+                      key={`${addr}-${i}`}
+                      className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1.5 font-mono text-xs text-[#8e9ab8]"
+                    >
+                      {truncateAddress(addr)}
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
-      {/* Borrower history */}
-      {borrowers.length > 0 && (
-        <Card className="mt-10">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="w-5 h-5 text-leather-brown" />
-              <h2 className="text-lg font-serif font-semibold text-dark-walnut">
-                Borrower History
-              </h2>
-              <Badge variant="neutral">{borrowers.length}</Badge>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {borrowers.map((addr, i) => (
-                <span
-                  key={`${addr}-${i}`}
-                  className="px-3 py-1.5 bg-leather-brown/5 rounded-lg text-xs font-mono text-slate border border-leather-brown/10"
-                >
-                  {truncateAddress(addr)}
-                </span>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Borrow modal */}
       {book && (
         <BorrowModal
           book={book}

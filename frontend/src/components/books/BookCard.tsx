@@ -1,13 +1,7 @@
 /**
  * =============================================================================
- * BookCard — Card resembling a physical book with spine accent
+ * BookCard â€” Catalog card with generated cover art and archive metadata
  * =============================================================================
- *
- * Displays:
- * - Book title, author, ISBN
- * - Availability (copies available / total)
- * - Active/inactive status badge
- * - Hover lift animation
  */
 
 "use client";
@@ -15,91 +9,99 @@
 import Link from "next/link";
 import { Book } from "@/types";
 import { Badge } from "@/components/ui/Badge";
-import { cn, availabilityPercentage } from "@/lib/utils";
-import { BookOpen } from "lucide-react";
-
-// Rotating palette of spine colors for visual variety
-const SPINE_COLORS = [
-  "bg-leather-brown",
-  "bg-forest-green",
-  "bg-dusty-rose",
-  "bg-gold-accent",
-  "bg-dark-walnut",
-  "bg-slate",
-];
+import { Card, CardContent } from "@/components/ui/Card";
+import { BookCover } from "@/components/books/BookCover";
+import { availabilityPercentage, cn } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
 
 interface BookCardProps {
   book: Book;
-  index?: number; // for varied spine colors
 }
 
-export function BookCard({ book, index = 0 }: BookCardProps) {
-  const spineColor = SPINE_COLORS[index % SPINE_COLORS.length];
+export function BookCard({ book }: BookCardProps) {
   const availability = availabilityPercentage(book.availableCopies, book.totalCopies);
   const isAvailable = book.availableCopies > 0n && book.active;
 
   return (
-    <Link href={`/books/${book.id.toString()}`}>
-      <div
+    <Link href={`/books/${book.id.toString()}`} className="group block h-full">
+      <Card
+        hover
         className={cn(
-          "group bg-cream rounded-xl border border-leather-brown/10",
-          "shadow-sm hover:shadow-xl hover:-translate-y-1.5",
-          "transition-all duration-300 overflow-hidden cursor-pointer h-full"
+          "h-full overflow-hidden border-white/10 bg-[#0f1729]",
+          !book.active && "opacity-90"
         )}
       >
-        {/* Book spine accent — colored bar on the left */}
-        <div className="flex h-full">
-          <div className={cn("w-2 min-h-full shrink-0 rounded-l-xl", spineColor)} />
+        <CardContent className="flex h-full flex-col p-4">
+          <div className="relative">
+            <BookCover
+              title={book.title}
+              author={book.author}
+              isbn={book.isbn}
+              seed={book.id.toString()}
+              size="sm"
+              className="mx-auto max-w-none"
+            />
+            <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 border border-white/10 bg-[#020617]/70 px-2 py-1 text-[10px] font-mono uppercase tracking-[0.25em] text-[#cdd5f5]">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+              File {Number(book.id).toString().padStart(2, "0")}
+            </div>
+          </div>
 
-          <div className="flex-1 p-5 flex flex-col justify-between">
-            {/* Top section: title, author, ISBN */}
+          <div className="mt-4 flex flex-1 flex-col justify-between gap-4">
             <div className="space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-serif text-lg font-semibold text-dark-walnut group-hover:text-leather-brown transition-colors line-clamp-2">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="font-serif text-xl font-semibold leading-tight text-[#edf0ff] transition-colors group-hover:text-cyan-200">
                   {book.title}
                 </h3>
-                {!book.active && (
-                  <Badge variant="danger" className="shrink-0">Disabled</Badge>
-                )}
+                <Badge variant={book.active ? "success" : "danger"} dot className="shrink-0">
+                  {book.active ? "Active" : "Disabled"}
+                </Badge>
               </div>
 
-              <p className="text-sm text-slate">by {book.author}</p>
-              <p className="text-xs text-slate/60 font-mono">ISBN: {book.isbn}</p>
+              <p className="text-sm text-[#8e9ab8]">by {book.author}</p>
+              <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#7080a4]">
+                ISBN {book.isbn}
+              </p>
             </div>
 
-            {/* Bottom section: availability bar + badge */}
-            <div className="mt-4 space-y-3">
-              {/* Availability bar */}
+            <div className="space-y-3 border-t border-white/10 pt-4">
               <div>
-                <div className="flex justify-between text-xs text-slate mb-1">
+                <div className="mb-1.5 flex justify-between text-xs text-[#8e9ab8]">
                   <span>{Number(book.availableCopies)} available</span>
-                  <span>{Number(book.totalCopies)} total</span>
+                  <span>{Number(book.totalCopies)} copies</span>
                 </div>
-                <div className="h-1.5 bg-leather-brown/10 rounded-full overflow-hidden">
+                <div className="h-2 overflow-hidden rounded-full bg-white/5">
                   <div
                     className={cn(
                       "h-full rounded-full transition-all duration-500",
-                      availability > 50 ? "bg-forest-green" : availability > 20 ? "bg-gold-accent" : "bg-dusty-rose"
+                      availability > 50
+                        ? "bg-emerald-300"
+                        : availability > 20
+                          ? "bg-cyan-200"
+                          : "bg-rose-300"
                     )}
                     style={{ width: `${availability}%` }}
                   />
                 </div>
               </div>
 
-              {/* Status badge */}
               <div className="flex items-center justify-between">
                 <Badge
-                  variant={isAvailable ? "success" : "danger"}
+                  variant={isAvailable ? "gold" : "neutral"}
                   dot
+                  className="rounded-full"
                 >
                   {isAvailable ? "Available" : "Unavailable"}
                 </Badge>
-                <BookOpen className="w-4 h-4 text-leather-brown/30 group-hover:text-leather-brown/60 transition-colors" />
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-[#cdd5f5] transition-colors group-hover:text-[#edf0ff]">
+                  Open
+                  <ChevronRight className="h-4 w-4" />
+                </span>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </Link>
   );
 }

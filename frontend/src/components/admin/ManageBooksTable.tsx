@@ -1,13 +1,7 @@
 /**
  * =============================================================================
- * ManageBooksTable — Admin table for managing existing books
+ * ManageBooksTable â€” Admin catalog management cards
  * =============================================================================
- *
- * Features:
- * - List all books (including inactive)
- * - Toggle active/inactive status (setBookActive)
- * - Add copies to a book (addBookCopies)
- * - View availability stats
  */
 
 "use client";
@@ -22,6 +16,7 @@ import { useBooks } from "@/hooks/useBooks";
 import { useAddBookCopies, useSetBookActive } from "@/hooks/useAdmin";
 import { BookCardSkeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { BookCover } from "@/components/books/BookCover";
 import { Plus, Power, BookOpen } from "lucide-react";
 
 export function ManageBooksTable() {
@@ -29,11 +24,9 @@ export function ManageBooksTable() {
   const { addCopies, isPending: addingCopies } = useAddBookCopies();
   const { setActive, isPending: togglingActive } = useSetBookActive();
 
-  // Modal state for adding copies
   const [copiesModal, setCopiesModal] = useState<Book | null>(null);
   const [additionalCopies, setAdditionalCopies] = useState("");
 
-  // Handle adding copies
   const handleAddCopies = () => {
     if (!copiesModal) return;
     const count = parseInt(additionalCopies, 10);
@@ -45,7 +38,7 @@ export function ManageBooksTable() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <BookCardSkeleton key={i} />
         ))}
@@ -58,46 +51,53 @@ export function ManageBooksTable() {
       <EmptyState
         icon={BookOpen}
         title="No books yet"
-        description="Add your first book using the form above."
+        description="Add your first archive entry using the form above."
       />
     );
   }
 
   return (
     <>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {books.map((book) => (
           <div
             key={book.id.toString()}
-            className="bg-cream rounded-xl border border-leather-brown/10 p-4 flex items-center justify-between gap-4 hover:shadow-sm transition-shadow"
+            className="grid gap-4 rounded-2xl border border-white/10 bg-[#0f1729] p-4 md:grid-cols-[92px_1fr_auto]"
           >
-            {/* Book info */}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-serif font-semibold text-dark-walnut truncate">
+            <BookCover
+              title={book.title}
+              author={book.author}
+              isbn={book.isbn}
+              seed={book.id.toString()}
+              size="sm"
+              className="max-w-[92px]"
+            />
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="truncate font-serif text-lg font-semibold text-[#edf0ff]">
                   {book.title}
                 </h3>
                 <Badge variant={book.active ? "success" : "danger"} dot>
                   {book.active ? "Active" : "Disabled"}
                 </Badge>
               </div>
-              <p className="text-sm text-slate truncate">
+              <p className="mt-1 truncate text-sm text-[#8e9ab8]">
                 {book.author} · ISBN: {book.isbn}
               </p>
-              <p className="text-xs text-slate/60 mt-1">
+              <p className="mt-2 text-xs text-[#7080a4]">
                 {Number(book.availableCopies)}/{Number(book.totalCopies)} copies available
               </p>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-col gap-2 sm:flex-row md:flex-col lg:flex-row">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setCopiesModal(book)}
                 disabled={addingCopies}
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="h-3.5 w-3.5" />
                 Copies
               </Button>
               <Button
@@ -106,7 +106,7 @@ export function ManageBooksTable() {
                 onClick={() => setActive(book.id, !book.active)}
                 isLoading={togglingActive}
               >
-                <Power className="w-3.5 h-3.5" />
+                <Power className="h-3.5 w-3.5" />
                 {book.active ? "Disable" : "Enable"}
               </Button>
             </div>
@@ -114,14 +114,13 @@ export function ManageBooksTable() {
         ))}
       </div>
 
-      {/* Add copies modal */}
       <Modal
         isOpen={!!copiesModal}
         onClose={() => setCopiesModal(null)}
-        title={`Add Copies — ${copiesModal?.title}`}
+        title={`Add Copies - ${copiesModal?.title ?? ""}`}
       >
-        <div className="space-y-4">
-          <p className="text-sm text-slate">
+        <div className="space-y-4 text-[#edf0ff]">
+          <p className="text-sm text-[#8e9ab8]">
             Current copies: {copiesModal ? Number(copiesModal.totalCopies) : 0}
           </p>
           <Input

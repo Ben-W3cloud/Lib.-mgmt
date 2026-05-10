@@ -1,6 +1,6 @@
 /**
  * =============================================================================
- * Admin Rules Page — Configure borrow and point rules
+ * Admin Rules Page â€” Configure borrow and point rules
  * =============================================================================
  */
 
@@ -13,10 +13,10 @@ import { PageHeader } from "@/components/layout/PageHeader";
 export default function AdminRulesPage() {
   return (
     <AdminGuard>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <PageHeader
           title="System Rules"
-          subtitle="Configure point rewards, penalties, and borrowing limits"
+          subtitle="Tune borrow limits and point rules without leaving the archive."
         />
         <RulesForm />
       </div>

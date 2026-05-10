@@ -1,17 +1,16 @@
 /**
  * =============================================================================
- * useAdmin — Hooks for all admin (owner-only) contract operations
+ * useAdmin â€” Hooks for all admin (owner-only) contract operations
  * =============================================================================
- *
- * Every admin hook:
- * - Checks that the connected wallet is the owner (enforced by contract)
- * - Handles transaction lifecycle (submit → confirm → toast → cache invalidation)
- * - Maps Solidity errors to user-friendly messages
  */
 
 "use client";
 
-import { useWriteContract, useWaitForTransactionReceipt, useReadContracts } from "wagmi";
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContracts,
+} from "wagmi";
 import { LIBRARY_ABI, CONTRACT_ADDRESS } from "@/lib/contract";
 import { ContractConfig } from "@/types";
 import { mapContractError } from "@/lib/utils";
@@ -19,10 +18,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useEffect, useMemo, useRef } from "react";
 
-// ---------------------------------------------------------------------------
-// useContractConfig — Reads all public config variables in one multicall
-// Returns: maxBorrowDuration, maxActiveLoansPerCustomer, point rules
-// ---------------------------------------------------------------------------
 export function useContractConfig() {
   const { data: results, isLoading, refetch } = useReadContracts({
     contracts: [
@@ -48,21 +43,17 @@ export function useContractConfig() {
   return { config, isLoading, refetch };
 }
 
-// ---------------------------------------------------------------------------
-// Generic admin mutation factory — DRY pattern for all admin write operations
-// ---------------------------------------------------------------------------
 function useAdminMutation(successMessage: string) {
   const queryClient = useQueryClient();
   const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
-  const toastShown = useRef(false);
+  const toastShownRef = useRef(false);
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   useEffect(() => {
-    if (isSuccess && !toastShown.current) {
-      toastShown.current = true;
+    if (isSuccess && !toastShownRef.current) {
+      toastShownRef.current = true;
       toast.success(successMessage);
-      // Invalidate all contract read queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["readContract"] });
       queryClient.invalidateQueries({ queryKey: ["readContracts"] });
     }
@@ -75,19 +66,16 @@ function useAdminMutation(successMessage: string) {
     isSuccess,
     error,
     reset,
-    toastShown,
+    toastShownRef,
   };
 }
 
-// ---------------------------------------------------------------------------
-// useAddBook — Calls addBook(title, author, isbn, copies)
-// ---------------------------------------------------------------------------
 export function useAddBook() {
-  const { writeContract, isPending, isSuccess, error, reset, toastShown } =
-    useAdminMutation("Book added successfully! 📖");
+  const { writeContract, isPending, isSuccess, error, reset, toastShownRef } =
+    useAdminMutation("Book added successfully!");
 
   const addBook = (title: string, author: string, isbn: string, copies: number) => {
-    toastShown.current = false;
+    toastShownRef.current = false;
     writeContract(
       {
         address: CONTRACT_ADDRESS,
@@ -105,15 +93,12 @@ export function useAddBook() {
   return { addBook, isPending, isSuccess, error, reset };
 }
 
-// ---------------------------------------------------------------------------
-// useAddBookCopies — Calls addBookCopies(bookId, additionalCopies)
-// ---------------------------------------------------------------------------
 export function useAddBookCopies() {
-  const { writeContract, isPending, isSuccess, error, reset, toastShown } =
+  const { writeContract, isPending, isSuccess, error, reset, toastShownRef } =
     useAdminMutation("Copies added successfully!");
 
   const addCopies = (bookId: bigint, additionalCopies: number) => {
-    toastShown.current = false;
+    toastShownRef.current = false;
     writeContract(
       {
         address: CONTRACT_ADDRESS,
@@ -131,15 +116,12 @@ export function useAddBookCopies() {
   return { addCopies, isPending, isSuccess, error, reset };
 }
 
-// ---------------------------------------------------------------------------
-// useSetBookActive — Calls setBookActive(bookId, active)
-// ---------------------------------------------------------------------------
 export function useSetBookActive() {
-  const { writeContract, isPending, isSuccess, error, reset, toastShown } =
+  const { writeContract, isPending, isSuccess, error, reset, toastShownRef } =
     useAdminMutation("Book status updated!");
 
   const setActive = (bookId: bigint, active: boolean) => {
-    toastShown.current = false;
+    toastShownRef.current = false;
     writeContract(
       {
         address: CONTRACT_ADDRESS,
@@ -157,15 +139,12 @@ export function useSetBookActive() {
   return { setActive, isPending, isSuccess, error, reset };
 }
 
-// ---------------------------------------------------------------------------
-// useSetPointRules — Calls setPointRules(borrow, onTimeReturn, latePenalty)
-// ---------------------------------------------------------------------------
 export function useSetPointRules() {
-  const { writeContract, isPending, isSuccess, error, reset, toastShown } =
+  const { writeContract, isPending, isSuccess, error, reset, toastShownRef } =
     useAdminMutation("Point rules updated!");
 
   const setPointRules = (borrowReward: number, onTimeReward: number, latePenalty: number) => {
-    toastShown.current = false;
+    toastShownRef.current = false;
     writeContract(
       {
         address: CONTRACT_ADDRESS,
@@ -183,15 +162,12 @@ export function useSetPointRules() {
   return { setPointRules, isPending, isSuccess, error, reset };
 }
 
-// ---------------------------------------------------------------------------
-// useSetBorrowRules — Calls setBorrowRules(maxDuration, maxActiveLoans)
-// ---------------------------------------------------------------------------
 export function useSetBorrowRules() {
-  const { writeContract, isPending, isSuccess, error, reset, toastShown } =
+  const { writeContract, isPending, isSuccess, error, reset, toastShownRef } =
     useAdminMutation("Borrow rules updated!");
 
   const setBorrowRules = (maxDurationSeconds: bigint, maxActiveLoans: number) => {
-    toastShown.current = false;
+    toastShownRef.current = false;
     writeContract(
       {
         address: CONTRACT_ADDRESS,
@@ -209,12 +185,8 @@ export function useSetBorrowRules() {
   return { setBorrowRules, isPending, isSuccess, error, reset };
 }
 
-// ---------------------------------------------------------------------------
-// useOwnerUpsertCustomer — Admin registers/updates a customer
-// Calls ownerUpsertCustomer(address, fullName, email, memberCode, metadataURI)
-// ---------------------------------------------------------------------------
 export function useOwnerUpsertCustomer() {
-  const { writeContract, isPending, isSuccess, error, reset, toastShown } =
+  const { writeContract, isPending, isSuccess, error, reset, toastShownRef } =
     useAdminMutation("Customer profile updated!");
 
   const upsertCustomer = (
@@ -224,7 +196,7 @@ export function useOwnerUpsertCustomer() {
     memberCode: string,
     metadataURI: string
   ) => {
-    toastShown.current = false;
+    toastShownRef.current = false;
     writeContract(
       {
         address: CONTRACT_ADDRESS,

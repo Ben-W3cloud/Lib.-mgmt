@@ -14,7 +14,7 @@ export function Skeleton({ className }: SkeletonProps) {
   return (
     <div
       className={cn(
-        "animate-shimmer bg-gradient-to-r from-leather-brown/5 via-leather-brown/10 to-leather-brown/5",
+        "animate-shimmer bg-gradient-to-r from-white/5 via-white/10 to-white/5",
         "bg-[length:400%_100%] rounded-lg",
         className
       )}
@@ -25,7 +25,7 @@ export function Skeleton({ className }: SkeletonProps) {
 /** Skeleton card matching the BookCard layout */
 export function BookCardSkeleton() {
   return (
-    <div className="bg-cream rounded-xl border border-leather-brown/10 p-6 space-y-4">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
       {/* Book spine accent */}
       <div className="flex gap-4">
         <Skeleton className="w-2 h-28 rounded-full" />
@@ -46,7 +46,7 @@ export function BookCardSkeleton() {
 /** Skeleton card for loan entries */
 export function LoanCardSkeleton() {
   return (
-    <div className="bg-cream rounded-xl border border-leather-brown/10 p-5 space-y-3">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
       <div className="flex justify-between">
         <Skeleton className="h-5 w-40" />
         <Skeleton className="h-6 w-20 rounded-full" />
@@ -60,7 +60,7 @@ export function LoanCardSkeleton() {
 /** Skeleton for stat cards */
 export function StatCardSkeleton() {
   return (
-    <div className="bg-cream rounded-xl border border-leather-brown/10 p-6 space-y-3">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-3">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="h-8 w-16" />
     </div>
