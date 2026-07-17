@@ -1,0 +1,138 @@
+﻿"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { BookRow, Modal } from "@/components/library-panels";
+import { EmptyState, Field, PageHeader, SkeletonRows, Spinner, StatusNote } from "@/components/ui";
+import { contractConfig, IS_CONTRACT_CONFIGURED } from "@/lib/contract";
+import { useBooks, useProfile } from "@/lib/hooks";
+import type { Book } from "@/lib/types";
+import { asNumber, explainError, sameAddress, shortAddress } from "@/lib/types";
+
+const DURATIONS = [
+  { label: "7 days", seconds: 7 * 24 * 60 * 60 },
+  { label: "14 days", seconds: 14 * 24 * 60 * 60 },
+];
+
+export default function BrowsePage() {
+  const { address, isConnected } = useAccount();
+  const profile = useProfile(address);
+  const { books, isLoading, isError, error } = useBooks();
+  const [query, setQuery] = useState("");
+  const [onlyAvailable, setOnlyAvailable] = useState(true);
+  const [selected, setSelected] = useState<Book | null>(null);
+  const [duration, setDuration] = useState(DURATIONS[1].seconds);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const maxDuration = useReadContract({
+    ...contractConfig,
+    functionName: "maxBorrowDuration",
+    query: { enabled: IS_CONTRACT_CONFIGURED },
+  });
+  const write = useWriteContract();
+  const receipt = useWaitForTransactionReceipt({ hash: write.data });
+
+  useEffect(() => {
+    if (receipt.isSuccess) {
+      void queryClient.invalidateQueries();
+    }
+  }, [receipt.isSuccess, queryClient]);
+
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return books.filter((book) => {
+      const matches = !needle || [book.title, book.author, book.isbn].some((value) => value.toLowerCase().includes(needle));
+      const available = !onlyAvailable || (book.active && asNumber(book.availableCopies) > 0);
+      return matches && available;
+    });
+  }, [books, onlyAvailable, query]);
+
+  async function borrowBook() {
+    if (!selected) return;
+    setLocalError(null);
+    if (!isConnected) {
+      setLocalError("Connect a wallet before borrowing.");
+      return;
+    }
+    if (!profile.data?.registered) {
+      setLocalError("Register your profile before borrowing.");
+      return;
+    }
+    const max = asNumber(maxDuration.data as bigint | undefined);
+    if (max && duration > max) {
+      setLocalError("Selected duration is longer than the contract allows.");
+      return;
+    }
+    try {
+      await write.writeContractAsync({ ...contractConfig, functionName: "borrowBook", args: [selected.id, BigInt(duration)] });
+    } catch (err) {
+      setLocalError(explainError(err));
+    }
+  }
+
+  return (
+    <div>
+      <PageHeader eyebrow="Browse" title="Find a copy worth borrowing.">
+        Reads the contract directly, then filters locally by title, author, ISBN, active status, and copy count.
+      </PageHeader>
+
+      <section className="panel mb-6 grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-end">
+        <Field label="Search catalog" help="Try author, title, or ISBN.">
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Octavia, ledgers, 978..." />
+        </Field>
+        <label className="flex min-h-[44px] items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 text-sm font-semibold">
+          <input type="checkbox" checked={onlyAvailable} onChange={(event) => setOnlyAvailable(event.target.checked)} />
+          Available only
+        </label>
+      </section>
+
+      {!IS_CONTRACT_CONFIGURED ? <StatusNote tone="warning">Set <code>NEXT_PUBLIC_LIBRARY_ADDRESS</code> before browsing on-chain books.</StatusNote> : null}
+      {isLoading ? <SkeletonRows rows={5} /> : null}
+      {isError ? <StatusNote tone="error">{explainError(error)}</StatusNote> : null}
+      {!isLoading && !isError && filtered.length === 0 ? <EmptyState title="No matching books." body="Adjust the search or include paused and unavailable listings." /> : null}
+
+      {filtered.length > 0 ? (
+        <div className="panel divide-y divide-[var(--line)]">
+          {filtered.map((book) => (
+            <BookRow
+              key={book.id.toString()}
+              book={book}
+              meta={sameAddress(book.lister, address) ? "Listed by your wallet" : `Lister ${shortAddress(book.lister)}`}
+              action={
+                <button type="button" className="btn-primary" disabled={!book.active || asNumber(book.availableCopies) === 0} onClick={() => setSelected(book)}>
+                  Borrow copy
+                </button>
+              }
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {selected ? (
+        <Modal title={`Borrow ${selected.title}`} onClose={() => setSelected(null)}>
+          <div className="grid gap-4">
+            <StatusNote tone="info">Borrow reward posts immediately. Return on time to collect the return reward.</StatusNote>
+            <Field label="Borrow duration">
+              <select value={duration} onChange={(event) => setDuration(Number(event.target.value))}>
+                {DURATIONS.map((item) => (
+                  <option key={item.seconds} value={item.seconds}>{item.label}</option>
+                ))}
+              </select>
+            </Field>
+            {localError || write.error || receipt.error ? <StatusNote tone="error">{localError ?? explainError(write.error ?? receipt.error)}</StatusNote> : null}
+            {receipt.isSuccess ? <StatusNote tone="success">Loan opened. Catalog refreshed.</StatusNote> : null}
+            <button type="button" className="btn-primary gap-2" onClick={borrowBook} disabled={write.isPending || receipt.isLoading}>
+              {write.isPending || receipt.isLoading ? <Spinner /> : null}
+              {write.isPending ? "Confirm in wallet" : receipt.isLoading ? "Waiting for chain" : "Borrow book"}
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+    </div>
+  );
+}
+
+
+
