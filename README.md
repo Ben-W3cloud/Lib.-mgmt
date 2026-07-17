@@ -1,70 +1,57 @@
-﻿# LibraryManagement Smart Contract
+﻿# LibraryManagement dApp
 
-A simple Solidity repository containing a single on-chain library management contract: `LibraryManagement`.
+Solidity + Next.js app for on-chain library lending. Users can register a borrower profile, list books, borrow available copies, return active loans, and track points.
 
-## Overview
+## Workspaces
 
-`LibraryManagement` is a full-featured library system built in Solidity for Ethereum-compatible chains. It supports:
+- `hardhat/` - Hardhat 3 contract workspace for `LibraryManagement.sol`.
+- `frontend/` - Next.js 16 app router frontend with RainbowKit, wagmi, viem, and Tailwind 4.
 
-- Owner-managed book inventory with copy tracking and active/inactive book status
-- Customer registration with profile metadata
-- Borrow and return lifecycle with loan tracking and due dates
-- Reward points for borrowing and on-time return
-- Penalties for late returns
-- Read-only APIs for books, customers, loans, and borrower history
+## Contract commands
 
-## Contract
+```powershell
+cd hardhat
+npm run compile
+npm run deploy
+npm run deploy:sepolia
+npm run node
+```
 
-- File: `library.sol`
-- Contract: `LibraryManagement`
-- Compiler: `pragma solidity ^0.8.24`
-- License: `MIT`
+Create `hardhat/.env` from `.env.example` when deploying to Sepolia:
 
-## Key Features
+```env
+SEPOLIA_RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+DEPLOYER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
+```
 
-### Book Management
+`DEPLOYER_PRIVATE_KEY` must be a funded private key for the target network. Never commit real keys.
 
-- `addBook(title, author, isbn, copies)`
-- `addBookCopies(bookId, additionalCopies)`
-- `setBookActive(bookId, active)`
-- `getBook(bookId)`
-- `getBooksCount()`
-- `getBookBorrowerHistory(bookId)`
+## Frontend commands
 
-### Customer Management
+```powershell
+cd frontend
+npm run dev
+npm run lint
+npm run build
+```
 
-- `registerCustomer(fullName, email, memberCode, metadataURI)`
-- `ownerUpsertCustomer(customer, fullName, email, memberCode, metadataURI)`
-- `getCustomer(customer)`
-- `getMyProfile()`
-- `getMyActiveLoanIds()`
-- `getMyLoanHistoryIds()`
+Create `frontend/.env.local` from `.env.example`:
 
-### Borrowing & Returning
+```env
+NEXT_PUBLIC_LIBRARY_ADDRESS=0xYourDeployedContract
+NEXT_PUBLIC_CHAIN_ID=11155111
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
+```
 
-- `borrowBook(bookId, requestedDuration)`
-- `returnBook(loanId)`
-- Reward points for borrow events and on-time returns
-- Penalty points for late returns
+The app defaults to Sepolia and also includes local Hardhat chain support. If the contract address is missing or zero, the UI renders setup guidance instead of attempting writes.
 
-### Admin Rules
+## Manual flow
 
-- `setPointRules(borrowRewardPoints, onTimeReturnRewardPoints, latePenaltyPerDay)`
-- `setBorrowRules(maxBorrowDuration, maxActiveLoansPerCustomer)`
+1. Deploy `LibraryManagement` and copy the address into `frontend/.env.local`.
+2. Connect a wallet on the matching chain.
+3. Register a profile under Profile.
+4. List a book from List book.
+5. Borrow from Browse.
+6. Return from Profile.
+7. Manage owned listings under My listings.
 
-## Usage
-
-1. Compile `library.sol` with Solidity `0.8.24` or newer.
-2. Deploy `LibraryManagement` from the owner account.
-3. Add books and configure loan/point rules as the contract owner.
-4. Register customers, then allow them to borrow and return books.
-
-## Notes
-
-- The contract emits events for ownership transfer, book management, customer registration, borrow, and return actions.
-- Errors are defined using custom revert types for gas-efficient validation.
-- Borrow duration is capped by `maxBorrowDuration`, and customers are limited by `maxActiveLoansPerCustomer`.
-
-## Development
-
-For implementation details and full NatSpec documentation, review `library.sol`.
