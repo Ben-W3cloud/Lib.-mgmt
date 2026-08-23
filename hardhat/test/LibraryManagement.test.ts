@@ -222,8 +222,8 @@ describe("LibraryManagement", function () {
       let profile = await library.read.getCustomer([bob.account.address]);
       assert.equal(big(profile.pointsBalance), 10n);
 
-      // Warp 36h: 12h past the 24h due date, still within day 2 of lateness.
-      await networkHelpers.time.increase(36n * 60n * 60n);
+      // Warp 60h: returned 36h past the 24h due date = 2 full late days.
+      await networkHelpers.time.increase(60n * 60n * 60n);
 
       // Past due: extension window closed.
       await viem.assertions.revertWithCustomError(
@@ -234,7 +234,7 @@ describe("LibraryManagement", function () {
 
       await library.write.returnBook([2n], { account: bob.account });
 
-      // Returned 12h into the second late day = 2 days late * 2 points/day.
+      // Returned 36h past due = 2 days late * 2 points/day.
       profile = await library.read.getCustomer([bob.account.address]);
       assert.equal(big(profile.totalPointsPenalized), 4n);
       assert.equal(big(profile.pointsBalance), 6n);
@@ -331,10 +331,10 @@ describe("LibraryManagement", function () {
     it("updates point rules", async function () {
       await library.write.setPointRules([20n, 25n, 3n, 5n]);
 
-      assert.equal(await library.read.borrowRewardPoints(), 20n);
-      assert.equal(await library.read.onTimeReturnRewardPoints(), 25n);
-      assert.equal(await library.read.latePenaltyPerDay(), 3n);
-      assert.equal(await library.read.extendRewardPoints(), 5n);
+      assert.equal(big(await library.read.borrowRewardPoints()), 20n);
+      assert.equal(big(await library.read.onTimeReturnRewardPoints()), 25n);
+      assert.equal(big(await library.read.latePenaltyPerDay()), 3n);
+      assert.equal(big(await library.read.extendRewardPoints()), 5n);
     });
 
     it("rejects admin calls from non-owners", async function () {
