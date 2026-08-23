@@ -11,6 +11,8 @@ export type Book = {
   lister: Address;
   createdAt: bigint | number;
   updatedAt: bigint | number;
+  category: string;
+  tags: string[];
 };
 
 export type CustomerProfile = {
@@ -38,6 +40,15 @@ export type Loan = {
   returnedAt: bigint | number;
   returned: boolean;
   pointsDelta: bigint;
+  extensionsUsed: bigint | number;
+};
+
+export type Review = {
+  id: bigint;
+  reviewer: Address;
+  rating: number;
+  comment: string;
+  createdAt: bigint | number;
 };
 
 export type TxState = "idle" | "pending" | "confirming" | "success" | "error";
@@ -70,7 +81,12 @@ export function explainError(error: unknown) {
   if (message.includes("NotBookLister")) return "Only the listing owner can change this book.";
   if (message.includes("MaxActiveLoansReached")) return "You reached the active-loan limit.";
   if (message.includes("BorrowDurationTooLong")) return "Choose a shorter borrow duration.";
+  if (message.includes("PointsBelowZero")) return "Insufficient points for this action.";
+  if (message.includes("InvalidEmail")) return "Please enter a valid email address.";
+  if (message.includes("InvalidIsbn")) return "Please enter a valid ISBN (10 or 13 digits).";
+  if (message.includes("MemberCodeAlreadyTaken")) return "This member code is already taken.";
+  if (message.includes("LoanNotCloseToExpiry")) return "Loan must be near expiry to extend.";
+  if (message.includes("AlreadyReviewed")) return "You've already reviewed this book.";
   if (message.includes("User rejected")) return "Wallet rejected the transaction.";
   return message.split("\n")[0] || "Transaction failed.";
 }
-

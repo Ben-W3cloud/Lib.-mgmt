@@ -16,6 +16,15 @@ contract LibraryManagement {
     error BorrowDurationTooLong();
     error MaxActiveLoansReached();
     error NotBookLister();
+    error InvalidEmail();
+    error InvalidIsbn();
+    error MemberCodeAlreadyTaken();
+    error PointsBelowZero();
+    error LoanNotOverdue();
+    error LoanNotCloseToExpiry();
+    error AlreadyReviewed();
+    error NotLoanParticipant();
+    error AlreadyRatedThisBook();
 
     // Events
     event OwnershipTransferred(address indexed oldOwner, address indexed newOwner);
@@ -51,9 +60,17 @@ contract LibraryManagement {
     event PointRulesUpdated(
         uint32 borrowRewardPoints,
         uint32 onTimeReturnRewardPoints,
-        uint32 latePenaltyPerDay
+        uint32 latePenaltyPerDay,
+        uint32 extendRewardPoints
     );
     event BorrowRulesUpdated(uint64 maxBorrowDuration, uint32 maxActiveLoansPerCustomer);
+    event LoanExtended(uint256 indexed loanId, uint64 newDueAt, uint32 extensionDays);
+    event ReviewAdded(
+        uint256 indexed bookId,
+        address indexed reviewer,
+        uint8 rating,
+        string comment
+    );
 
     // Ownership
     address public owner;
@@ -69,6 +86,8 @@ contract LibraryManagement {
     uint32 public borrowRewardPoints = 10;
     uint32 public onTimeReturnRewardPoints = 15;
     uint32 public latePenaltyPerDay = 2;
+    uint32 public extendRewardPoints = 3; // points earned per extended day
+    uint32 public maxExtensionDays = 7;
 
     // Models
     struct Book {
@@ -82,6 +101,8 @@ contract LibraryManagement {
         address lister;
         uint64 createdAt;
         uint64 updatedAt;
+        string category;
+        string[] tags;
     }
 
     struct CustomerProfile {
@@ -108,24 +129,44 @@ contract LibraryManagement {
         uint64 dueAt;
         uint64 returnedAt;
         bool returned;
-        int256 pointsDelta; // +reward or -penalty applied on return
+        int256 pointsDelta;
+        uint32 extensionsUsed;
+    }
+
+    struct Review {
+        uint256 id;
+        address reviewer;
+        uint8 rating;
+        string comment;
+        uint64 createdAt;
     }
 
     // Storage
     uint256 public nextBookId = 1;
     uint256 public nextLoanId = 1;
+    uint256 public nextReviewId = 1;
 
     mapping(uint256 => Book) private books;
-    mapping(address => CustomerProfile) private customers;
+    ombie mapping(address => CustomerProfile) private customers;
     mapping(uint256 => Loan) private loans;
+    mapping(uint256 => Review) private reviews;
 
     // Per-customer loan bookkeeping.
     mapping(address => uint256[]) private customerActiveLoanIds;
     mapping(address => uint256[]) private customerLoanHistoryIds;
-    mapping(uint256 => uint256) private activeLoanIndexPlusOne; // loanId => index + 1
+    mapping(uint256 => uint256) private activeLoanIndexPlusOne;
 
-    // Optional borrower history per book.
+    // Borrower history per book.
     mapping(uint256 => address[]) private bookBorrowers;
+
+    // Per-book reviews
+    mapping(uint256 => uint256[]) private bookReviewIds;
+
+    // Tracking memberCode uniqueness
+    mapping(string => bool) private memberCodeTaken;
+
+    // Tracking per-reviewer per-book
+    mapping(address => mapping(uint256 => bool)) private hasReviewedBook;
 
     // Constructor
     constructor() {
@@ -142,25 +183,19 @@ contract LibraryManagement {
     }
 
     // Admin: Rules
-    /**
-     * @notice Update point reward/penalty rules.
-     */
     function setPointRules(
         uint32 _borrowRewardPoints,
         uint32 _onTimeReturnRewardPoints,
-        uint32 _latePenaltyPerDay
+        uint32 _latePenaltyPerDay,
+        uint32 _extendRewardPoints
     ) external onlyOwner {
         borrowRewardPoints = _borrowRewardPoints;
         onTimeReturnRewardPoints = _onTimeReturnRewardPoints;
         latePenaltyPerDay = _latePenaltyPerDay;
-        emit PointRulesUpdated(_borrowRewardPoints, _onTimeReturnRewardPoints, _latePenaltyPerDay);
+        extendRewardPoints = _extendRewardPoints;
+        emit PointRulesUpdated(_borrowRewardPoints, _onTimeReturnRewardPoints, _latePenaltyPerDay, _extendRewardPoints);
     }
 
-    /**
-     * @notice Update borrowing limits.
-     * @param _maxBorrowDuration Maximum borrow length in seconds (e.g., 14 days).
-     * @param _maxActiveLoansPerCustomer Maximum simultaneously active loans per customer.
-     */
     function setBorrowRules(
         uint64 _maxBorrowDuration,
         uint32 _maxActiveLoansPerCustomer
@@ -170,18 +205,18 @@ contract LibraryManagement {
         emit BorrowRulesUpdated(_maxBorrowDuration, _maxActiveLoansPerCustomer);
     }
 
-    // Book Management (permissionless — anyone may list, only lister manages own listing)
-    /**
-     * @notice Add a new book to the library. Caller becomes the book's lister.
-     */
+    // Book Management
     function addBook(
         string calldata title,
         string calldata author,
         string calldata isbn,
-        uint64 copies
+        uint64 copies,
+        string calldata category,
+        string[] calldata tags
     ) external returns (uint256 bookId) {
         if (_isEmpty(title) || _isEmpty(author) || _isEmpty(isbn)) revert EmptyTextField();
         if (copies == 0) revert NoAvailableCopies();
+        _validateIsbn(isbn);
 
         bookId = nextBookId++;
         books[bookId] = Book({
@@ -194,15 +229,14 @@ contract LibraryManagement {
             active: true,
             lister: msg.sender,
             createdAt: _now64(),
-            updatedAt: _now64()
+            updatedAt: _now64(),
+            category: category,
+            tags: tags
         });
 
         emit BookAdded(bookId, msg.sender, title, author, isbn, copies, copies);
     }
 
-    /**
-     * @notice Increase copies for an existing book. Only the original lister may do this.
-     */
     function addBookCopies(uint256 bookId, uint64 additionalCopies) external {
         if (additionalCopies == 0) revert NoAvailableCopies();
         Book storage book = books[bookId];
@@ -216,9 +250,6 @@ contract LibraryManagement {
         emit BookCopiesUpdated(bookId, book.totalCopies, book.availableCopies);
     }
 
-    /**
-     * @notice Enable or disable borrowing for a specific book. Only the original lister may do this.
-     */
     function setBookActive(uint256 bookId, bool active) external {
         Book storage book = books[bookId];
         if (book.id == 0) revert BookNotFound();
@@ -229,21 +260,16 @@ contract LibraryManagement {
     }
 
     // Customer Registration & Profiles
-    /**
-     * @notice Register yourself as a library customer.
-     */
     function registerCustomer(
         string calldata fullName,
         string calldata email,
         string calldata memberCode,
         string calldata metadataURI
     ) external {
+        _validateEmail(email);
         _upsertCustomer(msg.sender, fullName, email, memberCode, metadataURI);
     }
 
-    /**
-     * @notice Register or update a customer's profile as owner (admin onboarding).
-     */
     function ownerUpsertCustomer(
         address customer,
         string calldata fullName,
@@ -252,6 +278,7 @@ contract LibraryManagement {
         string calldata metadataURI
     ) external onlyOwner {
         if (customer == address(0)) revert ZeroAddress();
+        _validateEmail(email);
         _upsertCustomer(customer, fullName, email, memberCode, metadataURI);
     }
 
@@ -273,6 +300,16 @@ contract LibraryManagement {
             emit CustomerRegistered(customer, fullName);
         }
 
+        // Validate memberCode uniqueness if it changed
+        if (!_isEmpty(memberCode) && 
+            keccak256(abi.encodePacked(profile.memberCode)) != keccak256(abi.encodePacked(memberCode))) {
+            if (memberCodeTaken[memberCode]) revert MemberCodeAlreadyTaken();
+            if (!_isEmptyStr(profile.memberCode)) {
+                memberCodeTaken[profile.memberCode] = false;
+            }
+            memberCodeTaken[memberCode] = true;
+        }
+
         profile.fullName = fullName;
         profile.email = email;
         profile.memberCode = memberCode;
@@ -283,11 +320,6 @@ contract LibraryManagement {
     }
 
     // Borrow / Return
-    /**
-     * @notice Borrow a book copy.
-     * @param bookId Book to borrow.
-     * @param requestedDuration Borrow duration in seconds (must be <= maxBorrowDuration).
-     */
     function borrowBook(uint256 bookId, uint64 requestedDuration) external returns (uint256 loanId) {
         if (requestedDuration == 0 || requestedDuration > maxBorrowDuration) {
             revert BorrowDurationTooLong();
@@ -302,11 +334,9 @@ contract LibraryManagement {
         if (!profile.registered) revert CustomerNotRegistered();
         if (profile.activeLoansCount >= maxActiveLoansPerCustomer) revert MaxActiveLoansReached();
 
-        // Allocate inventory.
         book.availableCopies -= 1;
         book.updatedAt = _now64();
 
-        // Open loan.
         loanId = nextLoanId++;
         uint64 borrowedAt = _now64();
         uint64 dueAt = borrowedAt + requestedDuration;
@@ -318,10 +348,10 @@ contract LibraryManagement {
             dueAt: dueAt,
             returnedAt: 0,
             returned: false,
-            pointsDelta: 0
+            pointsDelta: 0,
+            extensionsUsed: 0
         });
 
-        // Customer stats + tracking.
         profile.activeLoansCount += 1;
         profile.lifetimeBorrows += 1;
         _creditPoints(profile, borrowRewardPoints);
@@ -334,10 +364,27 @@ contract LibraryManagement {
         emit Borrowed(loanId, bookId, msg.sender, borrowedAt, dueAt, borrowRewardPoints);
     }
 
-    /**
-     * @notice Return a borrowed book.
-     * @param loanId Active loan ID.
-     */
+    function extendLoan(uint256 loanId, uint32 extensionDays) external {
+        if (extensionDays == 0 || extensionDays > maxExtensionDays) revert BorrowDurationTooLong();
+
+        Loan storage loan = loans[loanId];
+        if (loan.id == 0) revert LoanNotFound();
+        if (loan.returned) revert LoanAlreadyClosed();
+        if (loan.customer != msg.sender) revert NotLoanBorrower();
+
+        uint64 now64 = _now64();
+        if (now64 > loan.dueAt) revert LoanNotCloseToExpiry();
+
+        uint64 extensionSeconds = uint64(extensionDays) * 1 days;
+        loan.dueAt += extensionSeconds;
+        loan.extensionsUsed += 1;
+
+        CustomerProfile storage profile = customers[msg.sender];
+        uint256 reward = uint256(extensionDays) * extendRewardPoints;
+        _creditPoints(profile, reward);
+
+        emit LoanExtended(loanId, loan.dueAt, extensionDays);
+    }
 
     function returnBook(uint256 loanId) external {
         Loan storage loan = loans[loanId];
@@ -348,13 +395,11 @@ contract LibraryManagement {
         CustomerProfile storage profile = customers[msg.sender];
         Book storage book = books[loan.bookId];
 
-        // Close loan + inventory update.
         loan.returned = true;
         loan.returnedAt = _now64();
         book.availableCopies += 1;
         book.updatedAt = _now64();
 
-        // Active loan bookkeeping removal (swap and pop).
         _removeActiveLoan(msg.sender, loanId);
         profile.activeLoansCount -= 1;
         profile.lifetimeReturns += 1;
@@ -375,6 +420,39 @@ contract LibraryManagement {
         emit Returned(loanId, loan.bookId, msg.sender, loan.returnedAt, late, pointsDeltaAbs);
     }
 
+    // Review System
+    function addReview(uint256 bookId, uint8 rating, string calldata comment) external {
+        if (bookId == 0 || books[bookId].id == 0) revert BookNotFound();
+        if (rating == 0 || rating > 5) revert EmptyTextField();
+        if (_isEmpty(comment)) revert EmptyTextField();
+        if (hasReviewedBook[msg.sender][bookId]) revert AlreadyReviewed();
+
+        // Verify reviewer has borrowed this book
+        bool hasBorrowed;
+        address[] storage borrowers = bookBorrowers[bookId];
+        for (uint256 i = 0; i < borrowers.length; i++) {
+            if (borrowers[i] == msg.sender) {
+                hasBorrowed = true;
+                break;
+            }
+        }
+        if (!hasBorrowed) revert NotLoanParticipant();
+
+        uint256 reviewId = nextReviewId++;
+        reviews[reviewId] = Review({
+            id: reviewId,
+            reviewer: msg.sender,
+            rating: rating,
+            comment: comment,
+            createdAt: _now64()
+        });
+
+        bookReviewIds[bookId].push(reviewId);
+        hasReviewedBook[msg.sender][bookId] = true;
+
+        emit ReviewAdded(bookId, msg.sender, rating, comment);
+    }
+
     // Read API: Books
     function getBook(uint256 bookId) external view returns (Book memory) {
         Book memory book = books[bookId];
@@ -386,10 +464,35 @@ contract LibraryManagement {
         return nextBookId - 1;
     }
 
+    function getBooksPaginated(uint256 start, uint256 limit) external view returns (Book[] memory result, uint256 total) {
+        total = nextBookId - 1;
+        if (start >= total || limit == 0) return (new Book[](0), total);
+
+        uint256 end = start + limit;
+        if (end > total) end = total;
+        uint256 count = end - start;
+
+        result = new Book[](count);
+        for (uint256 i = 0; i < count; i++) {
+            result[i] = books[start + i + 1];
+        }
+    }
+
     function getBookBorrowerHistory(uint256 bookId) external view returns (address[] memory) {
         Book memory book = books[bookId];
         if (book.id == 0) revert BookNotFound();
         return bookBorrowers[bookId];
+    }
+
+    function getBookReviewIds(uint256 bookId) external view returns (uint256[] memory) {
+        if (bookId == 0 || books[bookId].id == 0) revert BookNotFound();
+        return bookReviewIds[bookId];
+    }
+
+    function getReview(uint256 reviewId) external view returns (Review memory) {
+        Review memory review = reviews[reviewId];
+        if (review.id == 0) revert LoanNotFound();
+        return review;
     }
 
     // Read API: Customers
@@ -455,11 +558,16 @@ contract LibraryManagement {
     }
 
     function _debitPoints(CustomerProfile storage profile, uint256 amount) internal {
+        if (profile.pointsBalance < int256(amount)) revert PointsBelowZero();
         profile.totalPointsPenalized += amount;
         profile.pointsBalance -= int256(amount);
     }
 
     function _isEmpty(string calldata value) internal pure returns (bool) {
+        return bytes(value).length == 0;
+    }
+
+    function _isEmptyStr(string memory value) internal pure returns (bool) {
         return bytes(value).length == 0;
     }
 
@@ -469,5 +577,42 @@ contract LibraryManagement {
 
     function _ceilDiv(uint256 a, uint256 b) internal pure returns (uint256) {
         return a == 0 ? 0 : ((a - 1) / b) + 1;
+    }
+
+    function _validateEmail(string calldata email) internal pure {
+        if (_isEmpty(email)) revert EmptyTextField();
+        bytes memory emailBytes = bytes(email);
+        bool hasAt;
+        bool hasDotAfterAt;
+        uint256 atPos;
+        for (uint256 i = 0; i < emailBytes.length; i++) {
+            if (emailBytes[i] == "@") {
+                if (hasAt) revert InvalidEmail(); // multiple @
+                hasAt = true;
+                atPos = i;
+            }
+            if (hasAt && emailBytes[i] == "." && i > atPos + 1) {
+                hasDotAfterAt = true;
+            }
+        }
+        if (!hasAt || !hasDotAfterAt || atPos == 0 || atPos == emailBytes.length - 1) revert InvalidEmail();
+    }
+
+    function _validateIsbn(string calldata isbn) internal pure {
+        if (_isEmpty(isbn)) revert EmptyTextField();
+        bytes memory isbnBytes = bytes(isbn);
+        uint256 len = isbnBytes.length;
+        // Accept ISBN-10 or ISBN-13 (with or without hyphens)
+        if (len < 10 || len > 17) revert InvalidIsbn();
+        // Basic check: must contain at least 10 digits
+        uint256 digitCount;
+        for (uint256 i = 0; i < len; i++) {
+            if (isbnBytes[i] >= "0" && isbnBytes[i] <= "9") {
+                digitCount++;
+            } else if (isbnBytes[i] != "-" && isbnBytes[i] != "X" && isbnBytes[i] != "x") {
+                revert InvalidIsbn();
+            }
+        }
+        if (digitCount < 10) revert InvalidIsbn();
     }
 }

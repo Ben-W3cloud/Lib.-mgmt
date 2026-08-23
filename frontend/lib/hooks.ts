@@ -2,7 +2,7 @@
 
 import { useReadContract, useReadContracts } from "wagmi";
 import { contractConfig, IS_CONTRACT_CONFIGURED } from "@/lib/contract";
-import type { Book, CustomerProfile, Loan } from "@/lib/types";
+import type { Book, CustomerProfile, Loan, Review } from "@/lib/types";
 
 export function useBooks() {
   const countQuery = useReadContract({
@@ -33,6 +33,25 @@ export function useBooks() {
       void countQuery.refetch();
       void booksQuery.refetch();
     },
+  };
+}
+
+export function useBooksPaginated(start: number, limit: number) {
+  const query = useReadContract({
+    ...contractConfig,
+    functionName: "getBooksPaginated",
+    args: [BigInt(start), BigInt(limit)],
+    query: { enabled: IS_CONTRACT_CONFIGURED },
+  });
+
+  const data = query.data as [Book[], bigint] | undefined;
+  return {
+    books: data?.[0] ?? [],
+    total: data?.[1] ? Number(data[1]) : 0,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: () => void query.refetch(),
   };
 }
 
@@ -74,3 +93,29 @@ export function useLoans(ids: readonly bigint[] | undefined, enabled: boolean) {
   return { ...loansQuery, loans };
 }
 
+export function useBookReviews(bookId: bigint | undefined) {
+  const reviewIdsQuery = useReadContract({
+    ...contractConfig,
+    functionName: "getBookReviewIds",
+    args: bookId ? [bookId] : undefined,
+    query: { enabled: IS_CONTRACT_CONFIGURED && Boolean(bookId) },
+  });
+
+  const ids = (reviewIdsQuery.data as bigint[]) ?? [];
+
+  const reviewsQuery = useReadContracts({
+    contracts: ids.map((id) => ({ ...contractConfig, functionName: "getReview", args: [id] })),
+    query: { enabled: IS_CONTRACT_CONFIGURED && ids.length > 0 },
+  });
+
+  const reviews = (reviewsQuery.data ?? [])
+    .map((item) => (item.status === "success" ? (item.result as unknown as Review) : undefined))
+    .filter((review): review is Review => Boolean(review));
+
+  return {
+    reviews,
+    isLoading: reviewIdsQuery.isLoading || reviewsQuery.isLoading,
+    isError: reviewIdsQuery.isError || reviewsQuery.isError,
+    error: reviewIdsQuery.error ?? reviewsQuery.error,
+  };
+}

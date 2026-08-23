@@ -6,7 +6,12 @@ const DEPLOYER_PRIVATE_KEY = process.env.DEPLOYER_PRIVATE_KEY ?? "";
 
 const config: HardhatUserConfig = {
   plugins: [hardhatToolboxViem],
-  solidity: "0.8.24",
+  solidity: {
+    version: "0.8.24",
+    settings: {
+      optimizer: { enabled: true, runs: 200 },
+    },
+  },
   networks: {
     hardhatMainnet: {
       type: "edr-simulated",
