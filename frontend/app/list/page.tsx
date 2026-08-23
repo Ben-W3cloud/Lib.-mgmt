@@ -7,7 +7,7 @@ import { Field, PageHeader, Spinner, StatusNote } from "@/components/ui";
 import { contractConfig, IS_CONTRACT_CONFIGURED } from "@/lib/contract";
 import { explainError } from "@/lib/types";
 
-const initial = { title: "", author: "", isbn: "", copies: "1" };
+const initial = { title: "", author: "", isbn: "", copies: "1", category: "", tags: "" };
 
 export default function ListBookPage() {
   const { isConnected } = useAccount();
@@ -43,11 +43,12 @@ export default function ListBookPage() {
       setLocalError("Copies must be a whole number above zero.");
       return;
     }
+    const tags = form.tags.split(",").map((tag) => tag.trim()).filter(Boolean);
     try {
       await write.writeContractAsync({
         ...contractConfig,
         functionName: "addBook",
-        args: [form.title.trim(), form.author.trim(), form.isbn.trim(), BigInt(copies)],
+        args: [form.title.trim(), form.author.trim(), form.isbn.trim(), BigInt(copies), form.category.trim(), tags],
       });
     } catch (err) {
       setLocalError(explainError(err));
@@ -74,6 +75,14 @@ export default function ListBookPage() {
         <Field label="Copies" help="Use whole copies. Additional copies can be added from My listings.">
           <input type="number" min="1" step="1" value={form.copies} onChange={(event) => setForm({ ...form, copies: event.target.value })} />
         </Field>
+        <div className="grid gap-5 md:grid-cols-2">
+          <Field label="Category" help="Optional, e.g. fiction or science.">
+            <input value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="fiction" />
+          </Field>
+          <Field label="Tags" help="Optional, comma separated.">
+            <input value={form.tags} onChange={(event) => setForm({ ...form, tags: event.target.value })} placeholder="fantasy, adventure" />
+          </Field>
+        </div>
         {localError || write.error || receipt.error ? <StatusNote tone="error">{localError ?? explainError(write.error ?? receipt.error)}</StatusNote> : null}
         {receipt.isSuccess ? <StatusNote tone="success">Book listed. It is now visible in Browse and My listings.</StatusNote> : null}
         <button className="btn-primary justify-self-start gap-2" type="submit" disabled={write.isPending || receipt.isLoading}>

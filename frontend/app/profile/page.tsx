@@ -2,16 +2,19 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { EmptyState, Field, Metric, PageHeader, SkeletonRows, Spinner, StatusNote } from "@/components/ui";
 import { contractConfig, IS_CONTRACT_CONFIGURED } from "@/lib/contract";
 import { useBooks, useLoanIds, useLoans, useProfile } from "@/lib/hooks";
 import { asNumber, dateFromSeconds, explainError, shortAddress } from "@/lib/types";
 
+const EXTEND_CHOICES = [1, 3, 5, 7];
+
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
   const profile = useProfile(address);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [extendDays, setExtendDays] = useState<Record<string, number>>({});
   const write = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash: write.data });
   const queryClient = useQueryClient();
@@ -21,6 +24,11 @@ export default function ProfilePage() {
   const activeLoans = useLoans(activeIds, Boolean(profile.data?.registered));
   const historyLoans = useLoans(historyIds, Boolean(profile.data?.registered));
   const { books } = useBooks();
+  const maxExtension = useReadContract({
+    ...contractConfig,
+    functionName: "maxExtensionDays",
+    query: { enabled: IS_CONTRACT_CONFIGURED },
+  });
 
   const bookTitleById = useMemo(() => new Map(books.map((book) => [book.id.toString(), book.title])), [books]);
 
@@ -68,6 +76,21 @@ export default function ProfilePage() {
     } catch (err) {
       setLocalError(explainError(err));
     }
+  }
+
+  async function extendLoan(loanId: bigint) {
+    setLocalError(null);
+    const days = extendDays[loanId.toString()] ?? 3;
+    try {
+      await write.writeContractAsync({ ...contractConfig, functionName: "extendLoan", args: [loanId, BigInt(days)] });
+    } catch (err) {
+      setLocalError(explainError(err));
+    }
+  }
+
+  function extensionChoices() {
+    const max = asNumber(maxExtension.data as bigint | undefined);
+    return EXTEND_CHOICES.filter((days) => !max || days <= max);
   }
 
   return (
@@ -126,10 +149,26 @@ export default function ProfilePage() {
                     <span className="font-mono text-xs text-[var(--muted)]">Loan #{loan.id.toString()}</span>
                   </div>
                   <p className="text-sm text-[var(--muted)]">Due {dateFromSeconds(loan.dueAt)}</p>
-                  <button type="button" className="btn-primary justify-self-start gap-2" disabled={write.isPending || receipt.isLoading} onClick={() => returnLoan(loan.id)}>
-                    {write.isPending || receipt.isLoading ? <Spinner /> : null}
-                    Return book
-                  </button>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <button type="button" className="btn-primary gap-2" disabled={write.isPending || receipt.isLoading} onClick={() => returnLoan(loan.id)}>
+                      {write.isPending || receipt.isLoading ? <Spinner /> : null}
+                      Return book
+                    </button>
+                    <Field label="Extend (days)">
+                      <select
+                        value={extendDays[loan.id.toString()] ?? 3}
+                        onChange={(event) => setExtendDays({ ...extendDays, [loan.id.toString()]: Number(event.target.value) })}
+                      >
+                        {extensionChoices().map((days) => (
+                          <option key={days} value={days}>{days}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <button type="button" className="btn-secondary gap-2" disabled={write.isPending || receipt.isLoading} onClick={() => extendLoan(loan.id)}>
+                      {write.isPending || receipt.isLoading ? <Spinner /> : null}
+                      Extend loan
+                    </button>
+                  </div>
                 </article>
               ))}
             </div>

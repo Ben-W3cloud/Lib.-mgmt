@@ -6,9 +6,9 @@ import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteCont
 import { BookRow, Modal } from "@/components/library-panels";
 import { EmptyState, Field, PageHeader, SkeletonRows, Spinner, StatusNote } from "@/components/ui";
 import { contractConfig, IS_CONTRACT_CONFIGURED } from "@/lib/contract";
-import { useBooks, useProfile } from "@/lib/hooks";
+import { useBookReviews, useBooks, useProfile } from "@/lib/hooks";
 import type { Book } from "@/lib/types";
-import { asNumber, explainError, sameAddress, shortAddress } from "@/lib/types";
+import { asNumber, dateFromSeconds, explainError, sameAddress, shortAddress } from "@/lib/types";
 
 const DURATIONS = [
   { label: "7 days", seconds: 7 * 24 * 60 * 60 },
@@ -24,6 +24,9 @@ export default function BrowsePage() {
   const [selected, setSelected] = useState<Book | null>(null);
   const [duration, setDuration] = useState(DURATIONS[1].seconds);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [lastAction, setLastAction] = useState<"borrow" | "review" | null>(null);
   const queryClient = useQueryClient();
 
   const maxDuration = useReadContract({
@@ -33,6 +36,16 @@ export default function BrowsePage() {
   });
   const write = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash: write.data });
+  const reviews = useBookReviews(selected?.id);
+  const borrowerHistory = useReadContract({
+    ...contractConfig,
+    functionName: "getBookBorrowerHistory",
+    args: selected ? [selected.id] : undefined,
+    query: { enabled: Boolean(selected), retry: false },
+  });
+  const borrowers = (borrowerHistory.data as readonly string[] | undefined) ?? [];
+  const hasBorrowed = borrowers.some((wallet) => sameAddress(wallet, address));
+  const alreadyReviewed = reviews.reviews.some((review) => sameAddress(review.reviewer, address));
 
   useEffect(() => {
     if (receipt.isSuccess) {
@@ -66,7 +79,28 @@ export default function BrowsePage() {
       return;
     }
     try {
+      setLastAction("borrow");
       await write.writeContractAsync({ ...contractConfig, functionName: "borrowBook", args: [selected.id, BigInt(duration)] });
+    } catch (err) {
+      setLocalError(explainError(err));
+    }
+  }
+
+  async function submitReview() {
+    if (!selected) return;
+    setLocalError(null);
+    if (!isConnected) {
+      setLocalError("Connect a wallet before reviewing.");
+      return;
+    }
+    if (!comment.trim()) {
+      setLocalError("Write a short comment before publishing.");
+      return;
+    }
+    try {
+      setLastAction("review");
+      await write.writeContractAsync({ ...contractConfig, functionName: "addReview", args: [selected.id, BigInt(rating), comment.trim()] });
+      setComment("");
     } catch (err) {
       setLocalError(explainError(err));
     }
@@ -101,7 +135,7 @@ export default function BrowsePage() {
               book={book}
               meta={sameAddress(book.lister, address) ? "Listed by your wallet" : `Lister ${shortAddress(book.lister)}`}
               action={
-                <button type="button" className="btn-primary" disabled={!book.active || asNumber(book.availableCopies) === 0} onClick={() => setSelected(book)}>
+                <button type="button" className="btn-primary" disabled={!book.active || asNumber(book.availableCopies) === 0} onClick={() => { setSelected(book); setComment(""); setRating(5); setLocalError(null); }}>
                   Borrow copy
                 </button>
               }
@@ -122,11 +156,60 @@ export default function BrowsePage() {
               </select>
             </Field>
             {localError || write.error || receipt.error ? <StatusNote tone="error">{localError ?? explainError(write.error ?? receipt.error)}</StatusNote> : null}
-            {receipt.isSuccess ? <StatusNote tone="success">Loan opened. Catalog refreshed.</StatusNote> : null}
+            {receipt.isSuccess ? <StatusNote tone="success">{lastAction === "review" ? "Review published." : "Loan opened."} Catalog refreshed.</StatusNote> : null}
             <button type="button" className="btn-primary gap-2" onClick={borrowBook} disabled={write.isPending || receipt.isLoading}>
               {write.isPending || receipt.isLoading ? <Spinner /> : null}
               {write.isPending ? "Confirm in wallet" : receipt.isLoading ? "Waiting for chain" : "Borrow book"}
             </button>
+
+            <div className="mt-2 border-t border-[var(--line)] pt-5">
+              <p className="eyebrow">Reviews</p>
+              {reviews.isLoading ? <div className="mt-4"><SkeletonRows rows={1} /></div> : null}
+              {!reviews.isLoading && reviews.reviews.length === 0 ? (
+                <p className="mt-4 text-sm text-[var(--muted)]">No reviews yet. Borrowers publish the first one.</p>
+              ) : null}
+              {reviews.reviews.length > 0 ? (
+                <div className="mt-4 grid gap-3">
+                  {reviews.reviews.map((review) => (
+                    <article key={review.id.toString()} className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono text-xs font-semibold text-[var(--accent)]">{review.rating}/5</span>
+                        <span className="font-mono text-xs text-[var(--muted)]">{dateFromSeconds(review.createdAt)}</span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6">{review.comment}</p>
+                      <p className="mt-2 font-mono text-xs text-[var(--muted)]">{shortAddress(review.reviewer)}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+
+              {hasBorrowed && !alreadyReviewed ? (
+                <form
+                  className="mt-5 grid gap-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void submitReview();
+                  }}
+                >
+                  <Field label="Your rating" help="1 is poor, 5 is excellent.">
+                    <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>
+                      {[5, 4, 3, 2, 1].map((value) => (
+                        <option key={value} value={value}>{value} / 5</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Comment">
+                    <textarea rows={3} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="What stood out about this copy?" />
+                  </Field>
+                  <button type="submit" className="btn-secondary justify-self-start gap-2" disabled={write.isPending || receipt.isLoading}>
+                    {write.isPending && lastAction === "review" ? <Spinner /> : null}
+                    Publish review
+                  </button>
+                </form>
+              ) : null}
+              {hasBorrowed && alreadyReviewed ? <p className="mt-4 text-sm text-[var(--muted)]">You already reviewed this title.</p> : null}
+              {!hasBorrowed ? <p className="mt-4 text-sm text-[var(--muted)]">Only wallets that borrowed this title can review it.</p> : null}
+            </div>
           </div>
         </Modal>
       ) : null}

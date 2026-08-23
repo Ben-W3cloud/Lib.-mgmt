@@ -137,6 +137,9 @@ export const libraryManagementAbi = [
   { type: "function", name: "maxBorrowDuration", stateMutability: "view", inputs: [], outputs: [
     { name: "", type: "uint64" }
   ] },
+  { type: "function", name: "maxExtensionDays", stateMutability: "view", inputs: [], outputs: [
+    { name: "", type: "uint32" }
+  ] },
   { type: "function", name: "owner", stateMutability: "view", inputs: [], outputs: [
     { name: "", type: "address" }
   ] },

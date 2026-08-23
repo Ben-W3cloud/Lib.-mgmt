@@ -147,7 +147,7 @@ contract LibraryManagement {
     uint256 public nextReviewId = 1;
 
     mapping(uint256 => Book) private books;
-    ombie mapping(address => CustomerProfile) private customers;
+    mapping(address => CustomerProfile) private customers;
     mapping(uint256 => Loan) private loans;
     mapping(uint256 => Review) private reviews;
 

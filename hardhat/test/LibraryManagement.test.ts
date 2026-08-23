@@ -1,363 +1,358 @@
-import { expect } from "chai";
 import { network } from "hardhat";
-import type { Address, PublicClient, WalletClient } from "viem";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+
+const { viem, networkHelpers } = await network.create();
+
+const [deployer, alice, bob, carol, dave] = await viem.getWalletClients();
+const library = await viem.deployContract("LibraryManagement");
+
+const ONE_DAY = 86_400n;
+const SEVEN_DAYS = 7n * ONE_DAY;
+const FOURTEEN_DAYS = 14n * ONE_DAY;
+
+function big(value: unknown): bigint {
+  return BigInt(value as string | number | bigint);
+}
 
 describe("LibraryManagement", function () {
-  let publicClient: PublicClient;
-  let walletClient: WalletClient;
-  let deployer: Address;
-  let alice: Address;
-  let bob: Address;
-  let contractAddress: Address;
-
-  const ONE_DAY = 86400n;
-  const SEVEN_DAYS = 7n * ONE_DAY;
-  const FOURTEEN_DAYS = 14n * ONE_DAY;
-
-  before(async function () {
-    const { viem } = await network.connect();
-    publicClient = await viem.getPublicClient();
-    walletClient = await viem.getWalletClient(deployer);
-    
-    const [deployerWallet, aliceWallet, bobWallet] = await viem.getWalletClients();
-    deployer = deployerWallet.account.address;
-    alice = aliceWallet.account.address;
-    bob = bobWallet.account.address;
-
-    const contract = await viem.deployContract("LibraryManagement");
-    contractAddress = contract.address;
+  it("sets the deployer as owner", async function () {
+    const owner = await library.read.owner();
+    assert.equal(owner.toLowerCase(), deployer.account.address.toLowerCase());
   });
 
-  describe("Deployment", function () {
-    it("should set the deployer as owner", async function () {
-      const owner = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "owner",
-      });
-      expect(owner).to.equal(deployer);
-    });
-
-    it("should have default config values", async function () {
-      const maxDuration = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "maxBorrowDuration",
-      });
-      expect(maxDuration).to.equal(FOURTEEN_DAYS);
-    });
+  it("has default config values", async function () {
+    assert.equal(big(await library.read.maxBorrowDuration()), FOURTEEN_DAYS);
+    assert.equal(big(await library.read.maxActiveLoansPerCustomer()), 3n);
+    assert.equal(big(await library.read.borrowRewardPoints()), 10n);
+    assert.equal(big(await library.read.onTimeReturnRewardPoints()), 15n);
+    assert.equal(big(await library.read.latePenaltyPerDay()), 2n);
+    assert.equal(big(await library.read.extendRewardPoints()), 3n);
+    assert.equal(big(await library.read.maxExtensionDays()), 7n);
   });
 
   describe("Book Management", function () {
-    it("should add a book with category and tags", async function () {
-      const tx = await walletClient.writeContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "addBook",
-        args: ["Test Book", "Test Author", "978-3-16-148410-0", 5n, "fiction", ["fantasy", "adventure"]],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: tx });
+    it("adds a book with category and tags", async function () {
+      await library.write.addBook([
+        "Test Book",
+        "Test Author",
+        "978-3-16-148410-0",
+        5n,
+        "fiction",
+        ["fantasy", "adventure"],
+      ]);
 
-      const book = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "getBook",
-        args: [1n],
-      });
-      expect(book.title).to.equal("Test Book");
-      expect(book.category).to.equal("fiction");
-      expect(book.tags).to.deep.equal(["fantasy", "adventure"]);
-      expect(book.totalCopies).to.equal(5n);
-      expect(book.availableCopies).to.equal(5n);
+      const book = await library.read.getBook([1n]);
+      assert.equal(book.title, "Test Book");
+      assert.equal(book.author, "Test Author");
+      assert.equal(book.isbn, "978-3-16-148410-0");
+      assert.equal(book.category, "fiction");
+      assert.deepEqual(book.tags, ["fantasy", "adventure"]);
+      assert.equal(book.totalCopies, 5n);
+      assert.equal(book.availableCopies, 5n);
+      assert.equal(book.active, true);
+      assert.equal(book.lister, deployer.account.address);
+
+      const count = await library.read.getBooksCount();
+      assert.equal(count, 1n);
     });
 
-    it("should reject invalid ISBN", async function () {
-      await expect(
-        walletClient.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "addBook",
-          args: ["Bad ISBN", "Author", "not-an-isbn", 1n, "", []],
-        })
-      ).to.be.rejectedWith("InvalidIsbn");
+    it("rejects an invalid ISBN", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.addBook(["Bad ISBN", "Author", "not-an-isbn", 1n, "", []]),
+        library,
+        "InvalidIsbn",
+      );
     });
 
-    it("should reject empty title", async function () {
-      await expect(
-        walletClient.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "addBook",
-          args: ["", "Author", "978-0-123-45678-9", 1n, "", []],
-        })
-      ).to.be.rejectedWith("EmptyTextField");
+    it("rejects an empty title", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.addBook(["", "Author", "978-0-123-45678-9", 1n, "", []]),
+        library,
+        "EmptyTextField",
+      );
     });
 
-    it("should reject zero copies", async function () {
-      await expect(
-        walletClient.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "addBook",
-          args: ["Title", "Author", "978-0-123-45678-9", 0n, "", []],
-        })
-      ).to.be.rejectedWith("NoAvailableCopies");
+    it("rejects zero copies", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.addBook(["Title", "Author", "978-0-123-45678-9", 0n, "", []]),
+        library,
+        "NoAvailableCopies",
+      );
+    });
+
+    it("lets only the lister add copies or pause the listing", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.addBookCopies([1n, 1n], { account: alice.account }),
+        library,
+        "NotBookLister",
+      );
+      await viem.assertions.revertWithCustomError(
+        library.write.setBookActive([1n, false], { account: alice.account }),
+        library,
+        "NotBookLister",
+      );
+
+      await library.write.addBookCopies([1n, 2n]);
+      const bookAfterCopies = await library.read.getBook([1n]);
+      assert.equal(bookAfterCopies.totalCopies, 7n);
+      assert.equal(bookAfterCopies.availableCopies, 7n);
+
+      await library.write.setBookActive([1n, false]);
+      await viem.assertions.revertWithCustomError(
+        library.write.borrowBook([1n, SEVEN_DAYS], { account: alice.account }),
+        library,
+        "BookInactive",
+      );
+      await library.write.setBookActive([1n, true]);
+      const bookReactivated = await library.read.getBook([1n]);
+      assert.equal(bookReactivated.active, true);
+      assert.equal(bookReactivated.availableCopies, 7n);
     });
   });
 
   describe("Customer Registration", function () {
-    it("should register a customer with valid email", async function () {
-      const aliceWallet = await viem.getWalletClient(alice);
-      const tx = await aliceWallet.writeContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "registerCustomer",
-        args: ["Alice", "alice@example.com", "ALC001", ""],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: tx });
+    it("registers a customer with valid data", async function () {
+      await library.write.registerCustomer(
+        ["Alice", "alice@example.com", "ALC001", ""],
+        { account: alice.account },
+      );
 
-      const profile = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "getCustomer",
-        args: [alice],
-      });
-      expect(profile.fullName).to.equal("Alice");
-      expect(profile.email).to.equal("alice@example.com");
-      expect(profile.registered).to.be.true;
+      const profile = await library.read.getCustomer([alice.account.address]);
+      assert.equal(profile.registered, true);
+      assert.equal(profile.fullName, "Alice");
+      assert.equal(profile.email, "alice@example.com");
+      assert.equal(profile.memberCode, "ALC001");
     });
 
-    it("should reject invalid email", async function () {
-      const bobWallet = await viem.getWalletClient(bob);
-      await expect(
-        bobWallet.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "registerCustomer",
-          args: ["Bob", "invalid-email", "BOB001", ""],
-        })
-      ).to.be.rejectedWith("InvalidEmail");
+    it("rejects an invalid email", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.registerCustomer(["Carol", "invalid-email", "CAR001", ""], {
+          account: carol.account,
+        }),
+        library,
+        "InvalidEmail",
+      );
     });
 
-    it("should reject duplicate member code", async function () {
-      const bobWallet = await viem.getWalletClient(bob);
-      // First register Bob with valid data
-      const tx = await bobWallet.writeContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "registerCustomer",
-        args: ["Bob", "bob@example.com", "BOB001", ""],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: tx });
-
-      // Try to register another user with same member code
-      await expect(
-        walletClient.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "ownerUpsertCustomer",
-          args: [deployer, "Deployer", "deployer@example.com", "BOB001", ""],
-        })
-      ).to.be.rejectedWith("MemberCodeAlreadyTaken");
+    it("rejects a duplicate member code", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.ownerUpsertCustomer([
+          deployer.account.address,
+          "Deployer",
+          "deployer@example.com",
+          "ALC001",
+          "",
+        ]),
+        library,
+        "MemberCodeAlreadyTaken",
+      );
     });
   });
 
   describe("Borrowing and Returning", function () {
-    it("should borrow a book", async function () {
-      const aliceWallet = await viem.getWalletClient(alice);
-      const tx = await aliceWallet.writeContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "borrowBook",
-        args: [1n, SEVEN_DAYS],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: tx });
+    it("borrows a book and credits points", async function () {
+      await library.write.borrowBook([1n, SEVEN_DAYS], { account: alice.account });
 
-      const book = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "getBook",
-        args: [1n],
+      const book = await library.read.getBook([1n]);
+      assert.equal(book.availableCopies, 6n);
+
+      const profile = await library.read.getCustomer([alice.account.address]);
+      assert.equal(profile.activeLoansCount, 1n);
+      assert.equal(profile.lifetimeBorrows, 1n);
+      assert.equal(profile.pointsBalance, 10n);
+
+      const activeIds = await library.read.getMyActiveLoanIds({
+        account: alice.account,
       });
-      expect(book.availableCopies).to.equal(4n);
+      assert.deepEqual(activeIds, [1n]);
     });
 
-    it("should reject borrow without registration", async function () {
-      // Use a new unregistered address
-      const newWallet = await viem.getWalletClient("0x1234567890123456789012345678901234567890");
-      await expect(
-        newWallet.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "borrowBook",
-          args: [1n, SEVEN_DAYS],
-        })
-      ).to.be.rejectedWith("CustomerNotRegistered");
+    it("rejects borrowing without registration", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.borrowBook([1n, SEVEN_DAYS], { account: dave.account }),
+        library,
+        "CustomerNotRegistered",
+      );
     });
 
-    it("should extend a loan", async function () {
-      const aliceWallet = await viem.getWalletClient(alice);
-      const tx = await aliceWallet.writeContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "extendLoan",
-        args: [1n, 3n], // extend by 3 days
-      });
-      await publicClient.waitForTransactionReceipt({ hash: tx });
+    it("extends a loan and credits extension rewards", async function () {
+      await library.write.extendLoan([1n, 3n], { account: alice.account });
 
-      const loan = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "getLoan",
-        args: [1n],
-      });
-      expect(loan.extensionsUsed).to.equal(1n);
+      const loan = await library.read.getLoan([1n]);
+      assert.equal(loan.extensionsUsed, 1n);
+      assert.equal(loan.dueAt, loan.borrowedAt + 10n * ONE_DAY);
+
+      const profile = await library.read.getCustomer([alice.account.address]);
+      assert.equal(profile.pointsBalance, 19n);
     });
 
-    it("should return a book on time and earn points", async function () {
-      const aliceWallet = await viem.getWalletClient(alice);
-      const tx = await aliceWallet.writeContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "returnBook",
-        args: [1n],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: tx });
+    it("rejects extensions beyond maxExtensionDays", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.extendLoan([1n, 10n], { account: alice.account }),
+        library,
+        "BorrowDurationTooLong",
+      );
+    });
 
-      const book = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "getBook",
-        args: [1n],
-      });
-      expect(book.availableCopies).to.equal(5n);
+    it("returns a book on time and earns the return reward", async function () {
+      await library.write.returnBook([1n], { account: alice.account });
 
-      const profile = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "getCustomer",
-        args: [alice],
+      const book = await library.read.getBook([1n]);
+      assert.equal(book.availableCopies, 7n);
+
+      const profile = await library.read.getCustomer([alice.account.address]);
+      // 10 (borrow) + 9 (extension) + 15 (on-time return)
+      assert.equal(profile.totalPointsEarned, 34n);
+      assert.equal(profile.pointsBalance, 34n);
+      assert.equal(profile.activeLoansCount, 0n);
+      assert.equal(profile.lifetimeReturns, 1n);
+
+      const loan = await library.read.getLoan([1n]);
+      assert.equal(loan.returned, true);
+      assert.equal(loan.pointsDelta, 15n);
+    });
+
+    it("charges a late penalty on overdue returns", async function () {
+      await library.write.registerCustomer(["Bob", "bob@example.com", "BOB001", ""], {
+        account: bob.account,
       });
-      // Alice earned borrowRewardPoints (10) + onTimeReturnRewardPoints (15) + extension reward (3*3=9)
-      expect(profile.totalPointsEarned).to.equal(34n);
+      await library.write.borrowBook([1n, ONE_DAY], { account: bob.account });
+
+      let profile = await library.read.getCustomer([bob.account.address]);
+      assert.equal(profile.pointsBalance, 10n);
+
+      await networkHelpers.time.increase(3n * ONE_DAY);
+
+      // Past due: extension window closed.
+      await viem.assertions.revertWithCustomError(
+        library.write.extendLoan([2n, 3n], { account: bob.account }),
+        library,
+        "LoanNotCloseToExpiry",
+      );
+
+      await library.write.returnBook([2n], { account: bob.account });
+
+      // 3 days late over a 1 day loan = 2 days late * 2 points/day.
+      profile = await library.read.getCustomer([bob.account.address]);
+      assert.equal(profile.totalPointsPenalized, 4n);
+      assert.equal(profile.pointsBalance, 6n);
+
+      const loan = await library.read.getLoan([2n]);
+      assert.equal(loan.pointsDelta, -4n);
+    });
+
+    it("enforces the active-loan limit", async function () {
+      await library.write.registerCustomer(
+        ["Carol", "carol@example.com", "CAR001", ""],
+        { account: carol.account },
+      );
+
+      await library.write.borrowBook([1n, SEVEN_DAYS], { account: carol.account });
+      await library.write.borrowBook([1n, SEVEN_DAYS], { account: carol.account });
+      await library.write.borrowBook([1n, SEVEN_DAYS], { account: carol.account });
+
+      await viem.assertions.revertWithCustomError(
+        library.write.borrowBook([1n, SEVEN_DAYS], { account: carol.account }),
+        library,
+        "MaxActiveLoansReached",
+      );
+
+      const profile = await library.read.getCustomer([carol.account.address]);
+      assert.equal(profile.activeLoansCount, 3n);
     });
   });
 
   describe("Review System", function () {
-    it("should add a review for a borrowed book", async function () {
-      const aliceWallet = await viem.getWalletClient(alice);
-      const tx = await aliceWallet.writeContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "addReview",
-        args: [1n, 5, "Great book!"],
+    it("lets a borrower review a borrowed book", async function () {
+      // Bob borrowed and returned book 1.
+      await library.write.addReview([1n, 4, "Late but great"], {
+        account: bob.account,
       });
-      await publicClient.waitForTransactionReceipt({ hash: tx });
 
-      const reviewIds = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "getBookReviewIds",
-        args: [1n],
-      });
-      expect(reviewIds.length).to.equal(1n);
+      const reviewIds = await library.read.getBookReviewIds([1n]);
+      assert.equal(reviewIds.length, 1n);
+
+      const review = await library.read.getReview([1n]);
+      assert.equal(review.reviewer, bob.account.address);
+      assert.equal(review.rating, 4);
+      assert.equal(review.comment, "Late but great");
+
+      const borrowerHistory = await library.read.getBookBorrowerHistory([1n]);
+      assert.ok(borrowerHistory.includes(bob.account.address));
     });
 
-    it("should reject duplicate review", async function () {
-      const aliceWallet = await viem.getWalletClient(alice);
-      await expect(
-        aliceWallet.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "addReview",
-          args: [1n, 4, "Still good"],
-        })
-      ).to.be.rejectedWith("AlreadyReviewed");
+    it("rejects duplicate reviews", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.addReview([1n, 5, "Again"], { account: bob.account }),
+        library,
+        "AlreadyReviewed",
+      );
     });
 
-    it("should reject review from non-borrower", async function () {
-      const bobWallet = await viem.getWalletClient(bob);
-      await expect(
-        bobWallet.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "addReview",
-          args: [1n, 3, "Never borrowed"],
-        })
-      ).to.be.rejectedWith("NotLoanParticipant");
-    });
-  });
-
-  describe("Points System", function () {
-    it("should prevent points from going below zero", async function () {
-      // Bob has no points, try to debit
-      const bobWallet = await viem.getWalletClient(bob);
-      // Bob borrows a book
-      const tx = await bobWallet.writeContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "borrowBook",
-        args: [1n, ONE_DAY],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: tx });
-
-      // Bob has 10 points from borrowing, so he can afford a small penalty
-      // But if we try to debit more than he has, it should revert
-      // This is tested by the PointsBelowZero check in _debitPoints
-      const profile = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "getCustomer",
-        args: [bob],
-      });
-      expect(profile.pointsBalance).to.be.gte(0n);
+    it("rejects reviews from wallets that never borrowed the book", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.addReview([1n, 3, "Never borrowed"], { account: dave.account }),
+        library,
+        "NotLoanParticipant",
+      );
     });
   });
 
   describe("Pagination", function () {
-    it("should return paginated books", async function () {
-      // Add more books for pagination test
+    it("paginates the catalog", async function () {
       for (let i = 0; i < 5; i++) {
-        await walletClient.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "addBook",
-          args: [`Book ${i + 2}`, "Author", `978-0-123-4567${i}-9`, 1n, "fiction", []],
-        });
+        await library.write.addBook([
+          `Book ${i + 2}`,
+          "Author",
+          `978-0-123-4567${i}-9`,
+          1n,
+          "fiction",
+          [],
+        ]);
       }
 
-      const [books, total] = await publicClient.readContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "getBooksPaginated",
-        args: [0n, 3n],
-      });
-      expect(books.length).to.equal(3);
-      expect(total).to.equal(7n);
+      const [firstPage, total] = await library.read.getBooksPaginated([0n, 3n]);
+      assert.equal(total, 6n);
+      assert.equal(firstPage.length, 3);
+      assert.equal(firstPage[0].id, 1n);
+
+      const [secondPage] = await library.read.getBooksPaginated([3n, 3n]);
+      assert.equal(secondPage.length, 3);
+      assert.equal(secondPage[0].id, 4n);
     });
   });
 
   describe("Admin Functions", function () {
-    it("should update point rules", async function () {
-      const tx = await walletClient.writeContract({
-        address: contractAddress,
-        abi: [],
-        functionName: "setPointRules",
-        args: [20n, 25n, 3n, 5n],
-      });
-      await publicClient.waitForTransactionReceipt({ hash: tx });
+    it("updates point rules", async function () {
+      await library.write.setPointRules([20n, 25n, 3n, 5n]);
+
+      assert.equal(await library.read.borrowRewardPoints(), 20n);
+      assert.equal(await library.read.onTimeReturnRewardPoints(), 25n);
+      assert.equal(await library.read.latePenaltyPerDay(), 3n);
+      assert.equal(await library.read.extendRewardPoints(), 5n);
     });
 
-    it("should reject non-owner admin calls", async function () {
-      const aliceWallet = await viem.getWalletClient(alice);
-      await expect(
-        aliceWallet.writeContract({
-          address: contractAddress,
-          abi: [],
-          functionName: "setPointRules",
-          args: [20n, 25n, 3n, 5n],
-        })
-      ).to.be.rejectedWith("NotOwner");
+    it("rejects admin calls from non-owners", async function () {
+      await viem.assertions.revertWithCustomError(
+        library.write.setPointRules([20n, 25n, 3n, 5n], { account: alice.account }),
+        library,
+        "NotOwner",
+      );
+
+      await viem.assertions.revertWithCustomError(
+        library.write.setBorrowRules([SEVEN_DAYS, 2n], { account: alice.account }),
+        library,
+        "NotOwner",
+      );
+
+      await viem.assertions.revertWithCustomError(
+        library.write.transferOwnership([alice.account.address], {
+          account: alice.account,
+        }),
+        library,
+        "NotOwner",
+      );
     });
   });
 });
