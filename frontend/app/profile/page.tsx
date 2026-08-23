@@ -82,7 +82,7 @@ export default function ProfilePage() {
     setLocalError(null);
     const days = extendDays[loanId.toString()] ?? 3;
     try {
-      await write.writeContractAsync({ ...contractConfig, functionName: "extendLoan", args: [loanId, BigInt(days)] });
+      await write.writeContractAsync({ ...contractConfig, functionName: "extendLoan", args: [loanId, days] });
     } catch (err) {
       setLocalError(explainError(err));
     }

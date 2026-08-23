@@ -74,7 +74,7 @@ export function dateFromSeconds(value: bigint | number | undefined) {
 }
 
 export function explainError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error ?? "Unknown error");
+  const message = typeof error === "string" ? error : error instanceof Error ? error.message : "";
   if (message.includes("CustomerNotRegistered")) return "Register your profile before borrowing.";
   if (message.includes("NoAvailableCopies")) return "No copies are available for this book.";
   if (message.includes("BookInactive")) return "This listing is paused by its owner.";

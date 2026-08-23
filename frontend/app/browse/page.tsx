@@ -99,7 +99,7 @@ export default function BrowsePage() {
     }
     try {
       setLastAction("review");
-      await write.writeContractAsync({ ...contractConfig, functionName: "addReview", args: [selected.id, BigInt(rating), comment.trim()] });
+      await write.writeContractAsync({ ...contractConfig, functionName: "addReview", args: [selected.id, rating, comment.trim()] });
       setComment("");
     } catch (err) {
       setLocalError(explainError(err));
