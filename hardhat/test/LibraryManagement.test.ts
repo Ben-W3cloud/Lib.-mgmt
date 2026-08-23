@@ -51,10 +51,10 @@ describe("LibraryManagement", function () {
       assert.equal(book.totalCopies, 5n);
       assert.equal(book.availableCopies, 5n);
       assert.equal(book.active, true);
-      assert.equal(book.lister, deployer.account.address);
+      assert.equal(book.lister.toLowerCase(), deployer.account.address.toLowerCase());
 
       const count = await library.read.getBooksCount();
-      assert.equal(count, 1n);
+      assert.equal(big(count), 1n);
     });
 
     it("rejects an invalid ISBN", async function () {
@@ -95,8 +95,8 @@ describe("LibraryManagement", function () {
 
       await library.write.addBookCopies([1n, 2n]);
       const bookAfterCopies = await library.read.getBook([1n]);
-      assert.equal(bookAfterCopies.totalCopies, 7n);
-      assert.equal(bookAfterCopies.availableCopies, 7n);
+      assert.equal(big(bookAfterCopies.totalCopies), 7n);
+      assert.equal(big(bookAfterCopies.availableCopies), 7n);
 
       await library.write.setBookActive([1n, false]);
       await viem.assertions.revertWithCustomError(
@@ -107,7 +107,7 @@ describe("LibraryManagement", function () {
       await library.write.setBookActive([1n, true]);
       const bookReactivated = await library.read.getBook([1n]);
       assert.equal(bookReactivated.active, true);
-      assert.equal(bookReactivated.availableCopies, 7n);
+      assert.equal(big(bookReactivated.availableCopies), 7n);
     });
   });
 
@@ -155,17 +155,17 @@ describe("LibraryManagement", function () {
       await library.write.borrowBook([1n, SEVEN_DAYS], { account: alice.account });
 
       const book = await library.read.getBook([1n]);
-      assert.equal(book.availableCopies, 6n);
+      assert.equal(big(book.availableCopies), 6n);
 
       const profile = await library.read.getCustomer([alice.account.address]);
-      assert.equal(profile.activeLoansCount, 1n);
-      assert.equal(profile.lifetimeBorrows, 1n);
-      assert.equal(profile.pointsBalance, 10n);
+      assert.equal(big(profile.activeLoansCount), 1n);
+      assert.equal(big(profile.lifetimeBorrows), 1n);
+      assert.equal(big(profile.pointsBalance), 10n);
 
       const activeIds = await library.read.getMyActiveLoanIds({
         account: alice.account,
       });
-      assert.deepEqual(activeIds, [1n]);
+      assert.deepEqual(activeIds.map(big), [1n]);
     });
 
     it("rejects borrowing without registration", async function () {
@@ -180,11 +180,11 @@ describe("LibraryManagement", function () {
       await library.write.extendLoan([1n, 3n], { account: alice.account });
 
       const loan = await library.read.getLoan([1n]);
-      assert.equal(loan.extensionsUsed, 1n);
-      assert.equal(loan.dueAt, loan.borrowedAt + 10n * ONE_DAY);
+      assert.equal(big(loan.extensionsUsed), 1n);
+      assert.equal(big(loan.dueAt), big(loan.borrowedAt) + 10n * ONE_DAY);
 
       const profile = await library.read.getCustomer([alice.account.address]);
-      assert.equal(profile.pointsBalance, 19n);
+      assert.equal(big(profile.pointsBalance), 19n);
     });
 
     it("rejects extensions beyond maxExtensionDays", async function () {
@@ -199,18 +199,18 @@ describe("LibraryManagement", function () {
       await library.write.returnBook([1n], { account: alice.account });
 
       const book = await library.read.getBook([1n]);
-      assert.equal(book.availableCopies, 7n);
+      assert.equal(big(book.availableCopies), 7n);
 
       const profile = await library.read.getCustomer([alice.account.address]);
       // 10 (borrow) + 9 (extension) + 15 (on-time return)
-      assert.equal(profile.totalPointsEarned, 34n);
-      assert.equal(profile.pointsBalance, 34n);
-      assert.equal(profile.activeLoansCount, 0n);
-      assert.equal(profile.lifetimeReturns, 1n);
+      assert.equal(big(profile.totalPointsEarned), 34n);
+      assert.equal(big(profile.pointsBalance), 34n);
+      assert.equal(big(profile.activeLoansCount), 0n);
+      assert.equal(big(profile.lifetimeReturns), 1n);
 
       const loan = await library.read.getLoan([1n]);
       assert.equal(loan.returned, true);
-      assert.equal(loan.pointsDelta, 15n);
+      assert.equal(big(loan.pointsDelta), 15n);
     });
 
     it("charges a late penalty on overdue returns", async function () {
@@ -220,9 +220,10 @@ describe("LibraryManagement", function () {
       await library.write.borrowBook([1n, ONE_DAY], { account: bob.account });
 
       let profile = await library.read.getCustomer([bob.account.address]);
-      assert.equal(profile.pointsBalance, 10n);
+      assert.equal(big(profile.pointsBalance), 10n);
 
-      await networkHelpers.time.increase(3n * ONE_DAY);
+      // Warp 36h: 12h past the 24h due date, still within day 2 of lateness.
+      await networkHelpers.time.increase(36n * 60n * 60n);
 
       // Past due: extension window closed.
       await viem.assertions.revertWithCustomError(
@@ -233,13 +234,14 @@ describe("LibraryManagement", function () {
 
       await library.write.returnBook([2n], { account: bob.account });
 
-      // 3 days late over a 1 day loan = 2 days late * 2 points/day.
+      // Returned 12h into the second late day = 2 days late * 2 points/day.
       profile = await library.read.getCustomer([bob.account.address]);
-      assert.equal(profile.totalPointsPenalized, 4n);
-      assert.equal(profile.pointsBalance, 6n);
+      assert.equal(big(profile.totalPointsPenalized), 4n);
+      assert.equal(big(profile.pointsBalance), 6n);
 
       const loan = await library.read.getLoan([2n]);
-      assert.equal(loan.pointsDelta, -4n);
+      assert.equal(loan.returned, true);
+      assert.equal(big(loan.pointsDelta), -4n);
     });
 
     it("enforces the active-loan limit", async function () {
@@ -259,7 +261,7 @@ describe("LibraryManagement", function () {
       );
 
       const profile = await library.read.getCustomer([carol.account.address]);
-      assert.equal(profile.activeLoansCount, 3n);
+      assert.equal(big(profile.activeLoansCount), 3n);
     });
   });
 
@@ -271,15 +273,17 @@ describe("LibraryManagement", function () {
       });
 
       const reviewIds = await library.read.getBookReviewIds([1n]);
-      assert.equal(reviewIds.length, 1n);
+      assert.equal(reviewIds.length, 1);
 
       const review = await library.read.getReview([1n]);
-      assert.equal(review.reviewer, bob.account.address);
+      assert.equal(review.reviewer.toLowerCase(), bob.account.address.toLowerCase());
       assert.equal(review.rating, 4);
       assert.equal(review.comment, "Late but great");
 
       const borrowerHistory = await library.read.getBookBorrowerHistory([1n]);
-      assert.ok(borrowerHistory.includes(bob.account.address));
+      assert.ok(
+        borrowerHistory.some((wallet) => wallet.toLowerCase() === bob.account.address.toLowerCase()),
+      );
     });
 
     it("rejects duplicate reviews", async function () {
@@ -313,13 +317,13 @@ describe("LibraryManagement", function () {
       }
 
       const [firstPage, total] = await library.read.getBooksPaginated([0n, 3n]);
-      assert.equal(total, 6n);
+      assert.equal(big(total), 6n);
       assert.equal(firstPage.length, 3);
-      assert.equal(firstPage[0].id, 1n);
+      assert.equal(big(firstPage[0].id), 1n);
 
       const [secondPage] = await library.read.getBooksPaginated([3n, 3n]);
       assert.equal(secondPage.length, 3);
-      assert.equal(secondPage[0].id, 4n);
+      assert.equal(big(secondPage[0].id), 4n);
     });
   });
 
