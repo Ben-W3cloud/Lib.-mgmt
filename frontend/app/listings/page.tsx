@@ -57,6 +57,9 @@ export default function ListingsPage() {
         Add physical copies when inventory increases, or pause borrowing while a title is unavailable.
       </PageHeader>
       {!isConnected ? <StatusNote tone="warning">Connect the lister wallet to see and manage owned listings.</StatusNote> : null}
+      {isConnected && mine.length > 0 && !isLoading ? (
+        <p className="label-caps">[ {mine.length} listed by this wallet ]</p>
+      ) : null}
       {localError || write.error || receipt.error ? <div className="mb-4"><StatusNote tone="error">{localError ?? explainError(write.error ?? receipt.error)}</StatusNote></div> : null}
       {receipt.isSuccess ? <div className="mb-4"><StatusNote tone="success">Listing updated. Catalog reads refreshed.</StatusNote></div> : null}
       {isLoading ? <SkeletonRows /> : null}

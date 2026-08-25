@@ -2,10 +2,10 @@
 
 export function PageHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
   return (
-    <header className="mb-8 grid gap-4 border-b border-[var(--line)] pb-6 md:grid-cols-[1.2fr_0.8fr]">
+    <header className="mb-8 grid gap-4 pb-6 md:grid-cols-[1.2fr_0.8fr]">
       <div>
         <p className="eyebrow">{eyebrow}</p>
-        <h1 className="mt-2 max-w-[12ch] text-4xl font-semibold leading-[0.98] tracking-tight md:text-6xl">{title}</h1>
+        <h1 className="mt-3 max-w-[16ch] text-3xl font-semibold leading-tight text-[var(--display)] md:text-5xl">{title}</h1>
       </div>
       <div className="max-w-[65ch] self-end text-sm leading-6 text-[var(--muted)] md:text-base">{children}</div>
     </header>
@@ -13,27 +13,39 @@ export function PageHeader({ eyebrow, title, children }: { eyebrow: string; titl
 }
 
 export function StatusNote({ tone = "info", children }: { tone?: "info" | "success" | "warning" | "error"; children: ReactNode }) {
-  return <div className={`status-note status-${tone}`}>{children}</div>;
+  const prefix = { info: "[INFO]", success: "[OK]", warning: "[WARN]", error: "[ERROR]" }[tone];
+  return (
+    <div className={`status-note status-${tone}`}>
+      <span className="font-mono text-xs font-bold tracking-wider">{prefix}</span>{" "}
+      {children}
+    </div>
+  );
 }
 
 export function EmptyState({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
   return (
     <section className="empty-state">
-      <p className="text-lg font-semibold tracking-tight">{title}</p>
-      <p className="mt-2 max-w-[56ch] text-sm leading-6 text-[var(--muted)]">{body}</p>
-      {action ? <div className="mt-5">{action}</div> : null}
+      <p className="text-lg font-medium text-[var(--muted)]">{title}</p>
+      <p className="mx-auto mt-2 max-w-[56ch] text-sm leading-6 text-[var(--disabled)]">{body}</p>
+      {action ? <div className="mt-6 flex justify-center">{action}</div> : null}
     </section>
   );
 }
 
+/**
+ * Loading state per Nothing system: bracket text + segmented bar. No shimmering
+ * skeleton placeholders. (Keeps the old export name so call sites stay stable.)
+ */
 export function SkeletonRows({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="panel divide-y divide-[var(--line)]" aria-busy="true" aria-live="polite">
+    <div className="panel grid gap-3 p-5" aria-busy="true" aria-live="polite">
+      <span className="label-caps">Loading</span>
       {Array.from({ length: rows }).map((_, index) => (
-        <div key={index} className="grid gap-3 p-5 md:grid-cols-[1fr_120px_120px]">
-          <span className="skeleton h-5 w-2/3" />
-          <span className="skeleton h-5 w-24" />
-          <span className="skeleton h-5 w-20" />
+        <div key={index} className="grid items-center gap-3 md:grid-cols-[1fr_120px_120px]">
+          <span className="font-mono text-sm text-[var(--disabled)]">[LOADING]</span>
+          <span className="seg-bar seg-bar-animated md:col-span-2">
+            <i /><i /><i /><i /><i /><i />
+          </span>
         </div>
       ))}
     </div>
@@ -59,13 +71,43 @@ export function Spinner({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+/** Stat readout: caps label, mono display value, optional caption. */
 export function Metric({ label, value, detail }: { label: string; value: string | number; detail?: string }) {
   return (
-    <div className="metric-tile">
-      <span className="text-xs text-[var(--muted)]">{label}</span>
-      <strong className="font-mono text-2xl tracking-tight">{value}</strong>
-      {detail ? <span className="text-xs text-[var(--muted)]">{detail}</span> : null}
+    <div className="grid content-start gap-1">
+      <span className="label-caps">{label}</span>
+      <strong className="font-mono text-lg font-bold leading-snug text-[var(--display)] md:text-xl">{value}</strong>
+      {detail ? <span className="text-xs leading-5 text-[var(--disabled)]">{detail}</span> : null}
     </div>
   );
 }
 
+/**
+ * The signature data visualization: discrete rectangular segments with 2px gaps.
+ * Square ends, no radius. Filled segments take `tone`; empty stay --line.
+ * Bar = proportion, numeric readout lives adjacent in the caller.
+ */
+export function SegmentedBar({
+  filled,
+  total,
+  tone,
+  height = "h-[10px]",
+}: {
+  filled: number;
+  total: number;
+  tone?: string;
+  height?: string;
+}) {
+  const safeFilled = Math.max(0, Math.min(filled, total));
+  return (
+    <div className={`seg-bar ${height}`} role="img" aria-label={`${safeFilled} of ${total}`}>
+      {Array.from({ length: total }).map((_, i) => (
+        <i
+          key={i}
+          className={i < safeFilled ? "on" : ""}
+          style={tone && i < safeFilled ? { background: tone } : undefined}
+        />
+      ))}
+    </div>
+  );
+}

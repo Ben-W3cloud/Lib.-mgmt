@@ -112,20 +112,25 @@ export default function BrowsePage() {
         Reads the contract directly, then filters locally by title, author, ISBN, active status, and copy count.
       </PageHeader>
 
-      <section className="panel mb-6 grid gap-4 p-4 md:grid-cols-[1fr_auto] md:items-end">
-        <Field label="Search catalog" help="Try author, title, or ISBN.">
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Octavia, ledgers, 978..." />
-        </Field>
-        <label className="flex min-h-[44px] items-center gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)] px-4 text-sm font-semibold">
-          <input type="checkbox" checked={onlyAvailable} onChange={(event) => setOnlyAvailable(event.target.checked)} />
-          Available only
-        </label>
+      <section className="sticky top-[64px] z-20 -mx-4 mb-6 border-b border-[var(--line)] bg-[var(--bg)] px-4 py-3 md:-mx-10 md:px-10">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+          <Field label="Search catalog" help="Try author, title, or ISBN.">
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Octavia, ledgers, 978..." />
+          </Field>
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg border border-[var(--line-strong)] px-4 font-mono text-xs uppercase tracking-wider text-[var(--muted)] transition-colors has-[:checked]:border-[var(--fg)] has-[:checked]:text-[var(--display)]">
+            <input type="checkbox" checked={onlyAvailable} onChange={(event) => setOnlyAvailable(event.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
+            Available only
+          </label>
+        </div>
       </section>
 
       {!IS_CONTRACT_CONFIGURED ? <StatusNote tone="warning">Set <code>NEXT_PUBLIC_LIBRARY_ADDRESS</code> before browsing on-chain books.</StatusNote> : null}
       {isLoading ? <SkeletonRows rows={5} /> : null}
       {isError ? <StatusNote tone="error">{explainError(error)}</StatusNote> : null}
       {!isLoading && !isError && filtered.length === 0 ? <EmptyState title="No matching books." body="Adjust the search or include paused and unavailable listings." /> : null}
+      {!isLoading && !isError && filtered.length > 0 ? (
+        <p className="label-caps mb-3">[ {filtered.length} shown · {books.length} total ]</p>
+      ) : null}
 
       {filtered.length > 0 ? (
         <div className="panel divide-y divide-[var(--line)]">
@@ -169,15 +174,16 @@ export default function BrowsePage() {
                 <p className="mt-4 text-sm text-[var(--muted)]">No reviews yet. Borrowers publish the first one.</p>
               ) : null}
               {reviews.reviews.length > 0 ? (
-                <div className="mt-4 grid gap-3">
+                <div className="mt-4 divide-y divide-[var(--line)] border-y border-[var(--line)]">
                   {reviews.reviews.map((review) => (
-                    <article key={review.id.toString()} className="rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4">
+                    <article key={review.id.toString()} className="grid gap-1.5 py-4">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-mono text-xs font-semibold text-[var(--accent)]">{review.rating}/5</span>
-                        <span className="font-mono text-xs text-[var(--muted)]">{dateFromSeconds(review.createdAt)}</span>
+                        <span className={`font-mono text-sm font-bold ${review.rating >= 4 ? "text-[var(--success)]" : review.rating >= 3 ? "text-[var(--warning)]" : "text-[var(--accent)]"}`}>
+                          {review.rating}/5
+                        </span>
+                        <span className="font-mono text-xs text-[var(--disabled)]">{dateFromSeconds(review.createdAt)} · {shortAddress(review.reviewer)}</span>
                       </div>
-                      <p className="mt-2 text-sm leading-6">{review.comment}</p>
-                      <p className="mt-2 font-mono text-xs text-[var(--muted)]">{shortAddress(review.reviewer)}</p>
+                      <p className="text-sm leading-6 text-[var(--fg)]">{review.comment}</p>
                     </article>
                   ))}
                 </div>

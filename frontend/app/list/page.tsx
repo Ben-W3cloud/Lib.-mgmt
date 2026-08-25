@@ -60,7 +60,9 @@ export default function ListBookPage() {
       <PageHeader eyebrow="List" title="Put a book into circulation.">
         Your connected wallet becomes the lister. Only that wallet can add copies or pause the listing later.
       </PageHeader>
-      <form onSubmit={submit} className="panel grid gap-5 p-5 md:max-w-3xl md:p-7">
+      <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_300px] md:gap-8">
+        <form onSubmit={submit} className="panel grid content-start gap-5 p-5 md:p-7">
+          <p className="label-caps">[ New record ]</p>
         <Field label="Title">
           <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="The Ministry for the Future" />
         </Field>
@@ -89,7 +91,22 @@ export default function ListBookPage() {
           {write.isPending || receipt.isLoading ? <Spinner /> : null}
           {write.isPending ? "Confirm in wallet" : receipt.isLoading ? "Waiting for chain" : "List book"}
         </button>
-      </form>
+        </form>
+
+        <aside className="panel-solid grid content-start gap-4 self-start p-5">
+          <p className="label-caps">[ After publish ]</p>
+          <ul className="grid gap-3 font-mono text-xs leading-5 text-[var(--muted)]">
+            <li className="flex gap-2"><span className="text-[var(--success)]">[+]</span> Visible in Browse instantly</li>
+            <li className="flex gap-2"><span className="text-[var(--success)]">[+]</span> Your wallet becomes the lister</li>
+            <li className="flex gap-2"><span className="text-[var(--success)]">[+]</span> Add copies anytime from My listings</li>
+            <li className="flex gap-2"><span className="text-[var(--success)]">[+]</span> Pause borrowing without deleting</li>
+            <li className="flex gap-2"><span className="text-[var(--success)]">[+]</span> Reviews stay loan-gated, forever</li>
+          </ul>
+          <p className="border-t border-[var(--line)] pt-4 text-xs leading-5 text-[var(--disabled)]">
+            One transaction, gas only. Nothing else leaves your wallet.
+          </p>
+        </aside>
+      </div>
     </div>
   );
 }
