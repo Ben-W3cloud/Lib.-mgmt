@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui";
 
 // Custom wallet control matching the landing theme. Replaces the default
 // RainbowKit button: connect CTA, wrong-network warning, and a connected
-// pill with a copy / disconnect dropdown.
+// pill with a status header, chain switch, copy, and disconnect.
 export function WalletPill() {
   return (
     <ConnectButton.Custom>
@@ -23,10 +23,11 @@ export function WalletPill() {
             {!ready ? (
               <span className="wallet-pill wallet-pill--ghost">
                 <Spinner className="h-4 w-4" />
-                <span>Loading</span>
+                <span className="font-mono text-xs uppercase tracking-wider">[Loading]</span>
               </span>
             ) : !connected ? (
-              <button type="button" onClick={openConnectModal} className="btn-primary px-4">
+              <button type="button" onClick={openConnectModal} className="btn-primary gap-2 px-4">
+                <span className="connect-dot" aria-hidden="true" />
                 Connect wallet
               </button>
             ) : chain.unsupported ? (
@@ -106,7 +107,7 @@ function ConnectedPill({
         aria-expanded={open}
         aria-haspopup="menu"
       >
-        <span className="wallet-pill-dot" aria-hidden="true" />
+        <span className="wallet-pill-dot wallet-pill-dot--on pulse-dot" aria-hidden="true" />
         <span className="font-mono text-sm">{display}</span>
         <svg viewBox="0 0 24 24" className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" aria-hidden="true">
           <path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -115,6 +116,13 @@ function ConnectedPill({
 
       {open ? (
         <div role="menu" className="wallet-menu">
+          {/* Status header */}
+          <div className="wallet-menu-header">
+            <span className="receipt-status-dot pulse-dot" aria-hidden="true" />
+            Connected
+            <span className="ml-auto text-[var(--disabled)]">{chainName ?? "Unknown"}</span>
+          </div>
+
           <button
             type="button"
             role="menuitem"
@@ -138,10 +146,12 @@ function ConnectedPill({
             </span>
             <span className="text-xs text-[var(--muted)]">Switch</span>
           </button>
+
           <button type="button" role="menuitem" onClick={copy} className="wallet-menu-item">
             <span>Copy address</span>
-            <span className="text-xs text-[var(--accent)]">{copied ? "Copied" : ""}</span>
+            <span className="text-xs text-[var(--success)]">{copied ? "[Copied]" : ""}</span>
           </button>
+
           <button
             type="button"
             role="menuitem"

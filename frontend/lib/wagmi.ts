@@ -7,8 +7,8 @@ import { http } from "wagmi";
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "librarymanagement-dev";
 
 export const wagmiConfig = getDefaultConfig({
-  appName: "Library Ledger",
-  appDescription: "Borrow, list, and return library books on-chain.",
+  appName: "Folio",
+  appDescription: "A library, kept in blocks. Borrow and lend books on-chain.",
   projectId: walletConnectProjectId,
   chains: [sepolia, hardhat],
   ssr: true,

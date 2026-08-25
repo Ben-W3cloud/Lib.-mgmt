@@ -29,15 +29,15 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
-          <div className="text-4xl">⚠️</div>
-          <h2 className="text-lg font-semibold text-[var(--fg)]">Something went wrong</h2>
-          <p className="max-w-md text-sm text-[var(--muted)]">
+        <div className="flex flex-col items-center justify-center gap-4 p-8 py-20 text-center">
+          <span className="label-caps text-[var(--accent)]">[ ERROR ]</span>
+          <h2 className="text-lg font-semibold text-[var(--display)]">Something went wrong</h2>
+          <p className="max-w-md font-mono text-xs leading-5 text-[var(--muted)]">
             {this.state.error?.message ?? "An unexpected error occurred."}
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-[var(--bg-deep)] transition-opacity hover:opacity-90"
+            className="btn-secondary"
           >
             Try again
           </button>

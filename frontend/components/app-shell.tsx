@@ -19,9 +19,11 @@ const appNav = [
 
 // Landing section anchors, shown while no wallet is connected.
 const landingNav = [
-  { href: "#about", label: "Why it exists" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#get-started", label: "Get started" },
+  { href: "#about", label: "Why" },
+  { href: "#how-it-works", label: "How" },
+  { href: "#specs", label: "Specs" },
+  { href: "#faq", label: "FAQ" },
+  { href: "#get-started", label: "Enter" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -43,16 +45,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-[100dvh] bg-[var(--bg)] text-[var(--fg)]">
-      <div className="noise-overlay" aria-hidden="true" />
       <RouteProgress />
       {!ready ? <Preloader /> : null}
-      <header className="sticky top-0 z-[30] border-b border-[var(--line)] bg-[oklch(0.15_0.012_155_/_0.82)] backdrop-blur-xl">
+      <header className="app-header sticky top-0 z-[30]">
         <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 md:grid md:grid-cols-[1fr_auto_1fr] md:px-10">
-          <Link href="/" className="brand-mark md:justify-self-start" aria-label="Library Ledger home">
-            <span className="brand-sigil">LL</span>
+          <Link href="/" className="brand-mark md:justify-self-start" aria-label="Folio home">
+            <span className="brand-dot" aria-hidden="true" />
             <span>
-              <span className="block text-sm font-semibold tracking-tight">Library Ledger</span>
-              <span className="block text-xs text-[var(--muted)]">On-chain lending desk</span>
+              <span className="block text-base font-medium tracking-tight text-[var(--display)]">Folio</span>
+              <span className="label-caps block !text-[var(--disabled)]">On-chain library</span>
             </span>
           </Link>
 
@@ -140,8 +141,10 @@ function Preloader() {
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-[var(--bg)]" role="status" aria-live="polite">
       <div className="preloader-panel">
-        <span className="font-mono text-xs text-[var(--muted)]">Syncing catalog index</span>
-        <span className="preloader-bar" aria-hidden="true" />
+        <span className="label-caps">[ Loading catalog ]</span>
+        <span className="seg-bar seg-bar-animated" aria-hidden="true">
+          <i /><i /><i /><i /><i /><i />
+        </span>
       </div>
     </div>
   );

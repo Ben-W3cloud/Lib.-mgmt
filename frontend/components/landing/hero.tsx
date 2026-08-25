@@ -1,112 +1,83 @@
 "use client";
 
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
 import { EnterAppButton } from "@/components/landing/enter-app-button";
-import { springDramatic } from "@/components/landing/motion-primitives";
+import { useTilt } from "@/components/use-tilt";
+
+const lines = ["A library,", "kept in", "blocks."];
 
 export function Hero({ onNeedsConnect }: { onNeedsConnect: () => void }) {
-  const reduced = useReducedMotion();
-  const ref = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const glowY = useTransform(scrollYProgress, [0, 1], ["0%", "38%"]);
-  const gridY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
-  const contentOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-
-  const headline = ["Books move", "when wallets", "agree."];
+  const tilt = useTilt(4);
 
   return (
-    <section ref={ref} className="landing-hero relative overflow-hidden">
-      {/* Decorative parallax layers */}
-      <motion.div aria-hidden="true" className="landing-hero-glow" style={{ y: reduced ? 0 : glowY }} />
-      <motion.div aria-hidden="true" className="landing-hero-grid" style={{ y: reduced ? 0 : gridY }} />
+    <section className="landing-hero">
+      {/* Decorative fields */}
+      <div aria-hidden="true" className="landing-hero-dots dot-grid" />
+      <div aria-hidden="true" className="hero-floor">
+        <div />
+      </div>
 
-      <motion.div
-        className="relative z-[2] mx-auto grid w-full max-w-[1400px] gap-14 px-4 pb-24 pt-20 md:px-10 md:pb-32 md:pt-28 lg:grid-cols-[1.35fr_0.65fr] lg:items-end"
-        style={{ opacity: reduced ? 1 : contentOpacity }}
-      >
-        <div>
-          <motion.p
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...springDramatic, delay: 0.1 }}
-            className="eyebrow"
-          >
-            On-chain lending desk · Sepolia
-          </motion.p>
+      {/* Centered composition, biased upward via heavier bottom padding */}
+      <div className="relative z-[2] mx-auto flex w-full max-w-[900px] flex-col items-center px-4 pb-36 pt-12 text-center md:pb-44 md:pt-16">
+        <p className="eyebrow led-in" style={{ animationDelay: "0.05s" }}>
+          The on-chain library · Sepolia
+        </p>
 
-          <h1 className="mt-5 max-w-[15ch] text-[clamp(2.75rem,12vw,3.75rem)] font-semibold leading-[0.94] tracking-tight md:text-8xl md:leading-[0.92]">
-            {headline.map((line, i) => (
-              <span key={line} className="block overflow-hidden">
-                <motion.span
-                  className="block"
-                  initial={reduced ? { opacity: 0 } : { opacity: 0, y: "108%" }}
-                  animate={reduced ? { opacity: 1 } : { opacity: 1, y: "0%" }}
-                  transition={{ ...springDramatic, delay: 0.16 + i * 0.09 }}
-                >
-                  {line}
-                </motion.span>
-              </span>
-            ))}
-          </h1>
+        <h1 className="font-doto mt-6 text-[clamp(3rem,11vw,5.75rem)] font-semibold leading-[0.95] text-[var(--display)]">
+          {lines.map((line, i) => (
+            <span key={line} className="led-in block" style={{ animationDelay: `${0.12 + i * 0.12}s` }}>
+              {line}
+            </span>
+          ))}
+        </h1>
 
-          <motion.p
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...springDramatic, delay: 0.5 }}
-            className="mt-8 max-w-[54ch] text-lg leading-8 text-[var(--muted)]"
-          >
-            A library that runs on a contract, not a spreadsheet. List titles with real copy
-            counts, borrow what is free, return on time, and let the ledger keep score.
-          </motion.p>
+        <p className="led-in mt-8 max-w-[52ch] text-base leading-7 text-[var(--muted)] md:text-lg md:leading-8" style={{ animationDelay: "0.5s" }}>
+          List the titles you own with real copy counts, borrow whatever is on the shelf,
+          return by the due date. Every loan is a transaction — visible to all, argued by no one.
+        </p>
 
-          <motion.div
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...springDramatic, delay: 0.62 }}
-            className="mt-10 flex flex-wrap items-center gap-3"
-          >
-            <EnterAppButton variant="primary" onNeedsConnect={onNeedsConnect} className="px-6">
-              Open the desk
-            </EnterAppButton>
-            <a className="btn-secondary px-6" href="#how-it-works">
-              See how it works
-            </a>
-          </motion.div>
+        <div className="led-in mt-10 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "0.62s" }}>
+          <EnterAppButton variant="primary" onNeedsConnect={onNeedsConnect}>
+            Open your folio
+          </EnterAppButton>
+          <a className="btn-secondary" href="#how-it-works">
+            How it works
+          </a>
         </div>
 
-        {/* Ledger receipt card */}
-        <motion.aside
-          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...springDramatic, delay: 0.4 }}
-          className="landing-receipt"
+        {/* Loan record readout — one flat instrument strip, tilts subtly */}
+        <aside
+          onPointerMove={tilt.onPointerMove}
+          onPointerLeave={tilt.onPointerLeave}
+          className="tilt landing-receipt led-in mt-14 w-full"
+          style={{ animationDelay: "0.72s" }}
           aria-hidden="true"
         >
-          <div className="flex items-center justify-between border-b border-dashed border-[var(--line)] pb-3">
-            <span className="font-mono text-xs font-bold uppercase text-[var(--accent)]">Loan #4127</span>
-            <span className="font-mono text-xs text-[var(--muted)]">confirmed</span>
+          <div className="flex flex-wrap items-center justify-between gap-x-7 gap-y-3 font-mono text-sm">
+            <span className="label-caps">Loan #4127</span>
+            <span className="label-caps flex items-center gap-2 !text-[var(--success)]">
+              <span className="receipt-status-dot pulse-dot" />
+              Confirmed
+            </span>
+            <span className="hidden h-4 w-px bg-[var(--line-strong)] sm:block" />
+            <Readout label="TITLE" value="The Undercommons" />
+            <Readout label="BORROWER" value="0x8fd2…a41c" />
+            <Readout label="DUE" value="Aug 02" />
+            <Readout label="POINTS" value="+12" accent />
+            <span className="ml-auto hidden font-mono text-[0.7rem] tracking-wider text-[var(--disabled)] lg:inline">
+              SEPOLIA · GAS Ξ0.00021 · NO MIDDLEMAN
+            </span>
           </div>
-          <div className="grid gap-3 py-4 font-mono text-sm">
-            <ReceiptRow label="Title" value="The Undercommons" />
-            <ReceiptRow label="Borrower" value="0x8fd2…a41c" />
-            <ReceiptRow label="Due" value="Aug 02, 14:20" />
-            <ReceiptRow label="Points" value="+12" accent />
-          </div>
-          <div className="border-t border-dashed border-[var(--line)] pt-3 font-mono text-[0.7rem] leading-5 text-[var(--muted)]">
-            block 6,284,119 · gas 0.00021 ETH · no middleman
-          </div>
-        </motion.aside>
-      </motion.div>
+        </aside>
+      </div>
     </section>
   );
 }
 
-function ReceiptRow({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+function Readout({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-[var(--muted)]">{label}</span>
-      <span className={accent ? "font-semibold text-[var(--accent)]" : "text-[var(--fg)]"}>{value}</span>
-    </div>
+    <span className="flex items-baseline gap-2">
+      <span className="label-caps">{label}</span>
+      <span className={accent ? "font-bold text-[var(--success)]" : "text-[var(--fg)]"}>{value}</span>
+    </span>
   );
 }

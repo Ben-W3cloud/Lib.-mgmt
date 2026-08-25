@@ -1,8 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion, useScroll, useSpring, useTransform } from "framer-motion";
-import { useRef } from "react";
-import { springSmooth } from "@/components/landing/motion-primitives";
+import { useEffect, useRef, useState } from "react";
+import { Reveal, RevealItem } from "@/components/landing/motion-primitives";
+import { SegmentedBar } from "@/components/ui";
 
 const steps = [
   {
@@ -10,106 +10,111 @@ const steps = [
     title: "Register your borrower profile",
     body: "One transaction writes your name, member code, and metadata to the contract. The wallet that signs it becomes your library card.",
     fn: "Register Profile",
+    tx: "REGISTERCUSTOMER()",
   },
   {
     tag: "02",
     title: "List a book with real copy counts",
     body: "Add a title, author, ISBN, and how many copies you hold. You stay the lister — pause it or add stock whenever you want.",
     fn: "Add Books",
+    tx: "ADDBOOK()",
   },
   {
     tag: "03",
-    title: "Browse and borrow what is free",
+    title: "Browse the shelves, borrow what's free",
     body: "Search the catalog by title, author, or ISBN. Pick a duration, sign, and the copy is yours until the due date.",
     fn: "Borrow Books",
+    tx: "BORROWBOOK()",
   },
   {
     tag: "04",
     title: "Return on time, collect the points",
     body: "Hand the copy back before it is due and the ledger credits your balance. Late returns cost points. The record settles itself.",
     fn: "Return and Gain",
+    tx: "RETURNBOOK()",
+  },
+  {
+    tag: "05",
+    title: "Review what you actually read",
+    body: "Only wallets that borrowed a title can review it — every rating carries a loan behind it. Your take becomes part of the copy's permanent record.",
+    fn: "Add Review",
+    tx: "ADDREVIEW()",
   },
 ];
 
 export function Roadmap() {
-  const reduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 65%", "end 55%"] });
-  const fill = useSpring(scrollYProgress, { stiffness: 80, damping: 26 });
-  const scaleY = useTransform(reduced ? scrollYProgress : fill, [0, 1], [0, 1]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [activeStep, setActiveStep] = useState(0);
+
+  // Mechanical scroll tracker: whichever node crosses the viewport center
+  // becomes the live readout. No springs, no smooth interpolation.
+  useEffect(() => {
+    const root = listRef.current;
+    if (!root) return;
+    const nodes = Array.from(root.querySelectorAll<HTMLElement>("[data-step]"));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveStep(Number((entry.target as HTMLElement).dataset.step));
+          }
+        }
+      },
+      { rootMargin: "-45% 0px -45% 0px" }
+    );
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <section id="how-it-works" className="landing-section landing-section--tight-top">
-      <div className="mx-auto w-full max-w-[1400px] px-4 md:px-10">
-        <header className="mb-14 max-w-[46ch]">
-          <p className="eyebrow">How it works</p>
-          <h2 className="mt-4 text-4xl font-semibold leading-[1.02] tracking-tight md:text-5xl">
-            Four transactions, start to finish.
-          </h2>
+      <div className="mx-auto grid w-full max-w-[1400px] gap-10 px-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-16 md:px-10">
+        {/* Sticky control column with live readout */}
+        <header className="self-start md:sticky md:top-32">
+          <Reveal>
+            <RevealItem>
+              <p className="eyebrow">How it works</p>
+            </RevealItem>
+            <RevealItem>
+              <h2 className="mt-4 text-balance text-3xl font-semibold leading-tight text-[var(--display)] md:text-5xl">
+                Five transactions, start to finish.
+              </h2>
+            </RevealItem>
+          </Reveal>
+
+          {/* Live instrument: current position in the sequence */}
+          <div className="mt-8 grid max-w-[240px] gap-2 border border-[var(--line)] bg-[var(--panel)] p-4">
+            <span className="label-caps">Sequence</span>
+            <span className="font-doto text-3xl font-semibold leading-none text-[var(--display)]">
+              {steps[activeStep].tag}
+              <span className="text-lg text-[var(--disabled)]"> / 0{steps.length}</span>
+            </span>
+            <SegmentedBar filled={activeStep + 1} total={steps.length} height="h-[6px]" />
+            <span className="font-mono text-xs leading-5 text-[var(--muted)]">{steps[activeStep].fn.toUpperCase()}</span>
+          </div>
         </header>
 
-        <div ref={ref} className="relative grid gap-0 pl-12 md:pl-20">
-          {/* Rail track */}
+        {/* Step nodes */}
+        <div ref={listRef} className="relative pl-10 md:pl-14">
           <div className="landing-rail-track" aria-hidden="true" />
-          {/* Scroll-driven fill */}
-          <motion.div
-            className="landing-rail-fill"
-            style={{ scaleY, transformOrigin: "top" }}
-            aria-hidden="true"
-          />
-
           {steps.map((step, i) => (
-            <TimelineNode key={step.tag} step={step} index={i} total={steps.length} progress={reduced ? scrollYProgress : fill} />
+            <div key={step.tag} data-step={i} className="relative pb-12 last:pb-0">
+              <span aria-hidden="true" className="landing-rail-dot" style={i <= activeStep ? { background: "var(--display)" } : undefined} />
+              <Reveal amount={0.5}>
+                <article className="landing-step-card transition-colors duration-200 hover:border-[var(--muted)]">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-sm font-bold text-[var(--muted)]">{step.tag}</span>
+                    <span className="landing-step-fn">{step.fn}</span>
+                  </div>
+                  <h3 className="mt-3 text-xl font-medium text-[var(--display)] md:text-2xl">{step.title}</h3>
+                  <p className="mt-2 max-w-[58ch] text-sm leading-6 text-[var(--muted)] md:text-base md:leading-7">{step.body}</p>
+                  <p className="label-caps mt-4 border-t border-[var(--line)] pt-3 !text-[var(--disabled)]">TX · {step.tx}</p>
+                </article>
+              </Reveal>
+            </div>
           ))}
         </div>
       </div>
     </section>
-  );
-}
-
-function TimelineNode({
-  step,
-  index,
-  total,
-  progress,
-}: {
-  step: (typeof steps)[number];
-  index: number;
-  total: number;
-  progress: ReturnType<typeof useSpring>;
-}) {
-  const reduced = useReducedMotion();
-  const ref = useRef<HTMLDivElement>(null);
-  // Node lights up once the fill passes its position on the rail.
-  const threshold = index / (total - 1 || 1);
-  const dotColor = useTransform(progress, [threshold - 0.02, threshold + 0.02], ["var(--line)", "var(--accent)"]);
-  const dotScale = useTransform(progress, [threshold - 0.02, threshold + 0.02], [1, 1.35]);
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={reduced ? { opacity: 0 } : { opacity: 0, x: 24 }}
-      whileInView={reduced ? { opacity: 1 } : { opacity: 1, x: 0 }}
-      viewport={{ once: true, amount: 0.5 }}
-      transition={{ ...springSmooth, delay: 0.05 }}
-      className="relative pb-14 last:pb-0"
-    >
-      {/* Node dot on the rail */}
-      <motion.span
-        aria-hidden="true"
-        className="landing-rail-dot"
-        style={{ backgroundColor: dotColor, scale: reduced ? 1 : dotScale }}
-      />
-      <div className="landing-step-card">
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-sm font-bold text-[var(--accent)]">{step.tag}</span>
-          <span className="rounded-full border border-[var(--line)] bg-[var(--panel-strong)] px-2.5 py-0.5 font-mono text-[0.7rem] uppercase tracking-wide text-[var(--muted)]">
-            {step.fn}
-          </span>
-        </div>
-        <h3 className="mt-3 text-2xl font-semibold tracking-tight">{step.title}</h3>
-        <p className="mt-2 max-w-[58ch] text-base leading-7 text-[var(--muted)]">{step.body}</p>
-      </div>
-    </motion.div>
   );
 }

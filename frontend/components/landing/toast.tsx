@@ -1,54 +1,74 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { springSmooth } from "@/components/landing/motion-primitives";
 
 export type ToastState = { id: number; message: string } | null;
 
-/** Returns a trigger fn and the rendered toast node. Auto-dismisses after 4s. */
+/**
+ * Inline status readout — no popup chrome. Enters via @starting-style, exits
+ * through a short data-closing fade before unmount (exit faster than enter).
+ */
 export function useToast() {
   const [toast, setToast] = useState<ToastState>(null);
-  const timer = useRef<number | null>(null);
+  const [closing, setClosing] = useState(false);
+  const dismissTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
+
+  const close = useCallback(() => {
+    if (closeTimer.current !== null) return;
+    if (!toast) return;
+    setClosing(true);
+    closeTimer.current = window.setTimeout(() => {
+      setToast(null);
+      setClosing(false);
+      closeTimer.current = null;
+    }, 130);
+  }, [toast]);
 
   const show = useCallback((message: string) => {
-    if (timer.current) window.clearTimeout(timer.current);
+    if (dismissTimer.current) window.clearTimeout(dismissTimer.current);
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setClosing(false);
     setToast({ id: Date.now(), message });
-    timer.current = window.setTimeout(() => setToast(null), 4000);
-  }, []);
+    dismissTimer.current = window.setTimeout(() => close(), 4000);
+  }, [close]);
 
   useEffect(() => () => {
-    if (timer.current) window.clearTimeout(timer.current);
+    if (dismissTimer.current) window.clearTimeout(dismissTimer.current);
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
   }, []);
 
-  return { show, node: <Toast toast={toast} onClose={() => setToast(null)} /> };
+  return { show, node: <Toast toast={toast} closing={closing} onClose={close} /> };
 }
 
-function Toast({ toast, onClose }: { toast: ToastState; onClose: () => void }) {
-  const reduced = useReducedMotion();
+function Toast({
+  toast,
+  closing,
+  onClose,
+}: {
+  toast: ToastState;
+  closing: boolean;
+  onClose: () => void;
+}) {
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[70] flex justify-center px-4" aria-live="polite">
-      <AnimatePresence>
-        {toast ? (
-          <motion.div
-            key={toast.id}
-            role="status"
-            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
-            animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-            exit={reduced ? { opacity: 0 } : { opacity: 0, y: 12, scale: 0.98 }}
-            transition={springSmooth}
-            className="pointer-events-auto flex max-w-[26rem] items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--panel)] px-4 py-3 shadow-[var(--shadow-lift)] backdrop-blur-xl"
+    <div className="inline-status" aria-live="polite">
+      {toast ? (
+        <div role="status" data-closing={closing || undefined}>
+          <span className="text-[var(--muted)]">[{">>"}] </span>
+          {toast.message}
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-2 text-[var(--disabled)] hover:text-[var(--display)]"
+            aria-label="Dismiss"
           >
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--accent-soft)] font-mono text-xs font-bold text-[var(--accent)]">
-              i
-            </span>
-            <p className="text-sm leading-6 text-[var(--fg)]">{toast.message}</p>
-            <button type="button" onClick={onClose} className="ml-1 text-xs font-semibold text-[var(--muted)] hover:text-[var(--fg)]" aria-label="Dismiss">
-              Close
-            </button>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+            [X]
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

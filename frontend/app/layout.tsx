@@ -1,28 +1,42 @@
-﻿import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+﻿import type { Metadata, Viewport } from "next";
+import { Doto, Space_Grotesk, Space_Mono } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { ProviderShell } from "@/components/provider-shell";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const doto = Doto({
+  variable: "--font-doto",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-grotesk",
   subsets: ["latin"],
 });
+
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+};
 
 export const metadata: Metadata = {
-  title: "Library Ledger",
-  description: "On-chain book lending, listings, profiles, loans, and points.",
+  title: "Folio — on-chain library",
+  description:
+    "Borrow and lend real books on-chain. Listings with live copy counts, loans with due dates, points for punctuality, reviews — settled by contract.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
+    <html
+      lang="en"
+      className={`${doto.variable} ${spaceGrotesk.variable} ${spaceMono.variable} h-full`}
+    >
       <body className="min-h-full">
         <ProviderShell>
           <AppShell>{children}</AppShell>
@@ -31,4 +45,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-

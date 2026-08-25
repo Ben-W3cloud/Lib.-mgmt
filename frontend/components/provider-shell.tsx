@@ -15,9 +15,9 @@ export function ProviderShell({ children }: { children: ReactNode }) {
         <RainbowKitProvider
           modalSize="compact"
           theme={darkTheme({
-            accentColor: "oklch(0.72 0.16 152)",
-            accentColorForeground: "oklch(0.16 0.02 155)",
-            borderRadius: "medium",
+            accentColor: "#d71921",
+            accentColorForeground: "#ffffff",
+            borderRadius: "small",
             fontStack: "system",
           })}
         >
