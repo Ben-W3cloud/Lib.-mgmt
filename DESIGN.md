@@ -1,86 +1,69 @@
 ﻿# Design
 
-> Auto-generated and maintained by frontend-god-mode.
 > Source of truth for typography, color, motion, layout, and component tokens.
 > Read this BEFORE touching the UI in any subsequent session.
 
-## Aesthetic direction
+## System
 
-Dark cyber-technical library console: near-black green-tinted surfaces, glowing emerald accents, radial green glows on hero + CTA, subtle grid. Dark-only (no light theme, no toggle). `color-scheme: dark`.
+**Nothing-inspired instrument panel.** Monochrome OLED canvas, typographic hierarchy, flat surfaces with border separation, red reserved as an interrupt. Brand name: Folio.
 
-## Dials
+## Fonts (declared, loaded via `next/font/google`)
 
-- DESIGN_VARIANCE: 7 / 10
-- MOTION_INTENSITY: 5 / 10
-- VISUAL_DENSITY: 6 / 10
+- Display (hero moments only): **Doto** (`--font-doto`) — 36px+, tight tracking, never body
+- Body / UI: **Space Grotesk** (`--font-grotesk`) — 300–700
+- Data / labels: **Space Mono** (`--font-space-mono`, 400/700) — ALL CAPS labels, numbers
 
-## Type stack
+Type scale: display 72/48/36 · heading 24 · subheading 18 · body 16 · body-sm 14 · caption 12 · label 11 caps +0.08em.
 
-- Display: Geist
-- Body: Geist
-- Mono: Geist Mono
-- Loaded via: `next/font/google`
-- Optical features enabled: `font-feature-settings: "ss01", "cv11"`
+## Mode
 
-Banned in this project: Inter, Roboto, Arial, system-ui as primary, serif dashboard fonts.
+Dark-first (OLED black). Light tokens defined in the skill but not wired; flip via custom properties if ever needed.
 
-## Color tokens
+## Color tokens (dark)
 
 ```css
-:root {
-  --bg: oklch(0.17 0.014 155);
-  --bg-deep: oklch(0.13 0.012 155);
-  --fg: oklch(0.96 0.008 150);
-  --muted: oklch(0.68 0.018 150);
-  --panel: oklch(0.21 0.016 155);
-  --panel-strong: oklch(0.25 0.02 155);
-  --line: oklch(0.32 0.018 155);
-  --accent: oklch(0.72 0.16 152);
-  --accent-strong: oklch(0.78 0.17 152);
-  --success: oklch(0.72 0.16 152);
-  --warning: oklch(0.78 0.13 75);
-  --error: oklch(0.66 0.17 20);
-}
+--bg: #000000;        --panel: #111111;      --panel-strong: #1a1a1a;
+--line: #222222;      --line-strong: #333333;
+--fg: #e8e8e8;        --display: #ffffff;    --muted: #999999;   --disabled: #666666;
+--accent: #d71921;    --accent-subtle: rgba(215,25,33,.15);
+--success: #4a9e5c;   --warning: #d4a843;    --interactive: #5b9bf6;
 ```
 
-Banned: pure black/white, purple-blue gradients, more than one main accent, untinted shadows.
+- Hierarchy = gray scale: display → primary → secondary → disabled. Max 4 levels.
+- Red = interrupt only (errors, wrong network, one accent word per screen). Never decorative.
+- Status colors apply to VALUES (points, dots, borders), never row backgrounds or labels.
+- Banned: gradients in chrome, shadows, blur, zebra stripes, filled icons, skeletons, toast popups.
 
 ## Motion
 
-- CSS easing: `cubic-bezier(0.16, 1, 0.3, 1)`
-- Framer spring: `{ type: "spring", stiffness: 100, damping: 20 }`
-- Animate `transform` and `opacity` only.
+- Easing: `cubic-bezier(0.25, 0.1, 0.25, 1)` ease-out. Durations 150–250ms micro.
+- No springs, no bounce, no parallax, no scale on hover. Press = translateY(1px) at 80ms.
+- Elements fade, don't slide. Loading = `[LOADING]` bracket text + segmented bar (`steps()` blink).
 - Respect `prefers-reduced-motion`.
 
-## Layout
+## Layout & components
 
-- Container: `max-w-[1400px] mx-auto px-4 md:px-10`
-- Reading width: `max-w-[65ch]`
-- Hero: asymmetric 60/40 console layout, never centered.
-- Data views: rows and panels over nested cards.
-- Mobile: all grids collapse under `md`.
+- Container `max-w-[1400px] mx-auto px-4 md:px-10`. Spacing does the grouping; dividers only in data lists.
+- Cards: surface `#111`, 1px `#222` border, radius ≤16px. Buttons: pill, Space Mono caps 13px; primary = white/black inversion; danger = red outline.
+- Inputs: full border 8px radius, mono text, focus border brightens. Labels: caps mono above.
+- Nav: mono caps pills; active = white text + red dot prefix. Header: solid black, 1px bottom border, no blur.
+- Modals: backdrop `rgba(0,0,0,.8)` no blur; dialog bordered surface, `[X]` ghost close; opacity-only enter/exit.
+- Dot-matrix motif: `.dot-grid` backgrounds masked into corners; Doto hero headline; segmented bars are THE data viz.
+- Status line replaces toasts: fixed bottom, bordered, mono caps, auto-dismiss.
+- Stats composition: ONE hero number (Doto) + stat rows with segmented bars — vary form, keep voice.
 
-## Component inventory
+## Routing
 
-Custom: AppShell, ProviderShell, BookRow, MutationForm, StatusNote, SkeletonRows, Modal.
-
-Landing (`components/landing/`): Landing (client shell + toast wiring), Hero (full-bleed, parallax glow/grid, line-mask reveal, ledger receipt card), StatsRow (4-col divided grid, static data, CountUp on view), About (asymmetric 2-col, fact rows), Roadmap (vertical scroll-driven timeline, spring rail-fill, node dots light on pass), Cta (wallet-aware copy + button). Primitives: Reveal/RevealItem (staggered scroll-reveal), CountUp (motion-value tween), EnterAppButton (magnetic, routes connected→/dashboard else opens RainbowKit modal + toast), useToast (auto-dismiss 4s).
-
-Landing motion dial: 8/10 (landing only). Site baseline stays 5/10.
-
-Routing: `/` is marketing landing (full-bleed main, no container padding). Former dashboard moved to `/dashboard`. Nav gained a Dashboard pill.
+`/` marketing landing (Hero, StatsRow, Why, Roadmap, Cta) · `/dashboard` `/browse` `/list` `/listings` `/profile` app routes behind wallet connect.
 
 ## Brand voice
 
-Direct and specific. Banned copy: elevate, seamless, unleash, next-gen, game-changing.
+Plain, specific, technical-calm. Wallet = library card. Banned copy: elevate, seamless, unleash, next-gen, game-changing.
 
 ## Accessibility floor
 
-WCAG AA body contrast, visible focus rings, real form labels, 44px mobile touch targets, Esc-dismissable modals.
+Visible focus rings (white), real form labels, 44px touch targets, Esc-dismissable modals, `prefers-reduced-motion` honored, AA contrast via token pairs.
 
 ## Last updated
 
-2026-07-09 by Codex: initial dApp UI and web3 integration.
-2026-07-17: landing page redesign — hero, stats row, about, how-it-works roadmap, CTA. Moved dashboard to /dashboard.
-2026-07-17: flipped to dark-only theme (near-black green-tinted base, glowing emerald, radial glows). Airy section spacing (7–10rem), separated cards with gaps + individual rounding. Old light zinc tokens retired across all routes.
-
+2026-08-24: full visual rebuild on Nothing design system — OLED dark mode, Space Grotesk/Space Mono/Doto stack, flat bordered surfaces, segmented loading/data bars, dot-matrix motif, inline status lines replacing toasts and skeletons, springs replaced with ease-out tweens. Prior iterations (emerald console, warm paper "Folio" skin) retired.

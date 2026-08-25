@@ -1,6 +1,6 @@
-﻿# LibraryManagement dApp
+﻿# Folio — LibraryManagement dApp
 
-Solidity + Next.js app for on-chain library lending. Users can register a borrower profile, list books, borrow available copies, return active loans, and track points.
+Solidity + Next.js app for on-chain library lending ("Folio"). Users register a borrower profile, list books, borrow available copies, return active loans, and track points. The contract stays `LibraryManagement`; Folio is the product name across the frontend.
 
 ## Workspaces
 
